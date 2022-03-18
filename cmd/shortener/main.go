@@ -4,8 +4,25 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 )
+
+const (
+	addr = "127.0.0.1:8080"
+)
+
+//Deleteme
+var tmpDB map[string]string
+
+func RandStringRunes(n int) string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
 
 func MyHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -13,8 +30,11 @@ func MyHandler(w http.ResponseWriter, r *http.Request) {
 		if len(r.RequestURI) == 1 {
 			http.Error(w, "Bad request", http.StatusBadRequest)
 		} else {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("some_long_url"))
+
+			lurl := tmpDB[r.RequestURI]
+			w.Header().Set("Location", lurl)
+			w.WriteHeader(http.StatusTemporaryRedirect)
+			w.Write([]byte{})
 		}
 		return
 	case http.MethodPost:
@@ -24,9 +44,11 @@ func MyHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 		}
 		slongURL := string(blongURL)
-		log.Println(slongURL)
+		log.Println(fmt.Sprintf("Got url %s", slongURL))
+		surl := "/" + RandStringRunes(8)
+		tmpDB[surl] = slongURL
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte("some_short_url"))
+		w.Write([]byte(fmt.Sprintf("http://%s%s", addr, surl)))
 		return
 	default:
 		log.Println(r)
@@ -36,7 +58,7 @@ func MyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	addr := "127.0.0.1:8080"
+	tmpDB = make(map[string]string)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", MyHandler)
 	log.Println(fmt.Sprintf("Запуск сервера на %s", addr))
