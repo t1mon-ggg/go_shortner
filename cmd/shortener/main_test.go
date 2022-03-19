@@ -102,10 +102,12 @@ func TestMyHandler(t *testing.T) {
 					body:   "",
 				}
 				result := result(request)
+				defer result.Body.Close()
 				require.Equal(t, tt.want.statusCode, result.StatusCode)
 				// require.Equal(t, tt.request.body, result.Header.Get("Location"))
 			default:
 				result := result(tt.request)
+				defer result.Body.Close()
 				require.Equal(t, tt.want.statusCode, result.StatusCode)
 			}
 
