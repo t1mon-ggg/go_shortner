@@ -25,12 +25,14 @@ func RandStringRunes(n int) string {
 }
 
 func MyHandler(w http.ResponseWriter, r *http.Request) {
+	if tmpDB == nil {
+		tmpDB = make(map[string]string)
+	}
 	switch r.Method {
 	case http.MethodGet:
 		if len(r.RequestURI) == 1 {
 			http.Error(w, "Bad request", http.StatusBadRequest)
 		} else {
-
 			lurl := tmpDB[r.RequestURI]
 			w.Header().Set("Location", lurl)
 			w.WriteHeader(http.StatusTemporaryRedirect)
@@ -44,14 +46,14 @@ func MyHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 		}
 		slongURL := string(blongURL)
-		log.Println(fmt.Sprintf("Got url %s", slongURL))
+		// log.Println(fmt.Sprintf("Got url %s", slongURL))
 		surl := "/" + RandStringRunes(8)
 		tmpDB[surl] = slongURL
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(fmt.Sprintf("http://%s%s", addr, surl)))
 		return
 	default:
-		log.Println(r)
+		// log.Println(r)
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
