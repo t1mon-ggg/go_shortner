@@ -4,68 +4,95 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
+
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/t1mon-ggg/go_shortner.git/internal/app"
 )
 
 const (
 	addr = "127.0.0.1:8080"
 )
 
-//Deleteme
-var tmpDB map[string]string
+type tmpDB map[string]string
 
-func RandStringRunes(n int) string {
-	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
+// func (db tmpDB) Database(post, get, answer chan string) {
+// 	select {
+// 	case <-post:
+// 		data := <-post
+
+// 	case <-get:
+
+// 	}
+// }
+
+func (db tmpDB) Router(r chi.Router) {
+	r.Get("/", DefaultGetHandler)
+	r.Get("/{^[a-zA-Z]}", db.GetHandler)
+	r.Post("/", db.PostHandler)
+	r.MethodNotAllowed(OtherHandler)
 }
 
-func MyHandler(w http.ResponseWriter, r *http.Request) {
-	if tmpDB == nil {
-		tmpDB = make(map[string]string)
+func OtherHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Bad request", http.StatusBadRequest)
+	return
+}
+
+func (db tmpDB) PostHandler(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	blongURL, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err)
 	}
-	switch r.Method {
-	case http.MethodGet:
-		if len(r.RequestURI) == 1 {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-		} else {
-			lurl := tmpDB[r.RequestURI]
-			w.Header().Set("Location", lurl)
-			w.WriteHeader(http.StatusTemporaryRedirect)
-			w.Write([]byte{})
-		}
-		return
-	case http.MethodPost:
-		defer r.Body.Close()
-		blongURL, err := io.ReadAll(r.Body)
-		if err != nil {
-			log.Println(err)
-		}
-		slongURL := string(blongURL)
-		// log.Println(fmt.Sprintf("Got url %s", slongURL))
-		surl := "/" + RandStringRunes(8)
-		tmpDB[surl] = slongURL
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(fmt.Sprintf("http://%s%s", addr, surl)))
-		return
-	default:
-		// log.Println(r)
+	slongURL := string(blongURL)
+	surl := app.RandStringRunes(8)
+	db[surl] = slongURL
+	log.Println(surl, "=", slongURL)
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(fmt.Sprintf("http://%s/%s", addr, surl)))
+	return
+}
+
+func (db tmpDB) GetHandler(w http.ResponseWriter, r *http.Request) {
+
+	if len(db) == 0 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+	p := r.RequestURI
+	p = p[1:]
+	if len(p) != 8 {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	lurl := db[p]
+	log.Println(p, "=", lurl)
+	w.Header().Set("Location", lurl)
+	w.WriteHeader(http.StatusTemporaryRedirect)
+	w.Write([]byte{})
+	return
+}
+
+func DefaultGetHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Empty request", http.StatusBadRequest)
+	return
 }
 
 func main() {
-	tmpDB = make(map[string]string)
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", MyHandler)
-	log.Println(fmt.Sprintf("Запуск сервера на %s", addr))
-	err := http.ListenAndServe(addr, mux)
-	if err != nil {
-		panic(err)
-	}
+	db := make(tmpDB)
+	db["ABCDabcd"] = "https://yandex.ru"
+
+	r := chi.NewRouter()
+
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	// r.Use(mymiddleware.TimerTrace)
+
+	r.Route("/", db.Router)
+
+	http.ListenAndServe(":8080", r)
+
 }
