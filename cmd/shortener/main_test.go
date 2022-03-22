@@ -152,6 +152,7 @@ func TestRouter(t *testing.T) {
 		defer ts.Close()
 		t.Run(tt.name, func(t *testing.T) {
 			response, body := testRequest(t, ts, tt.request.method, tt.request.query, tt.request.body)
+			defer response.Body.Close()
 			switch tt.request.rtype {
 			case "CreateShort":
 				require.Equal(t, tt.want.statusCode, response.StatusCode)
@@ -170,6 +171,7 @@ func TestRouter(t *testing.T) {
 				rex := regexp.MustCompile(`\w{8}`)
 				short := "/" + rex.FindString(body)
 				step2, _ := testRequest(t, ts, http.MethodGet, short, "")
+				defer step2.Body.Close()
 				assert.Equal(t, tt.want.statusCode, step2.StatusCode)
 				if tt.want.statusCode != 400 {
 					header := step2.Header.Get("Location")
