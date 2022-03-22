@@ -62,7 +62,7 @@ func TestRouter(t *testing.T) {
 			},
 			want: want{
 				statusCode: 201,
-				data:       ":8080/\\w{8}",
+				data:       `\w{8}`,
 			},
 		},
 		{
@@ -155,7 +155,7 @@ func TestRouter(t *testing.T) {
 			switch tt.request.rtype {
 			case "CreateShort":
 				require.Equal(t, tt.want.statusCode, response.StatusCode)
-				matched, err := regexp.Match("\\w{8}", []byte(body))
+				matched, err := regexp.Match(tt.want.data, []byte(body))
 				if err != nil {
 					t.Fatal("Regexp error")
 				}
@@ -167,8 +167,7 @@ func TestRouter(t *testing.T) {
 					require.Equal(t, tt.want.data, header)
 				}
 			case "2-Way":
-				t.Log("!!!!!!!!!!!!!!!!!!!!!!!!!")
-				rex := regexp.MustCompile("\\w{8}")
+				rex := regexp.MustCompile(`\w{8}`)
 				short := "/" + rex.FindString(body)
 				step2, _ := testRequest(t, ts, http.MethodGet, short, "")
 				assert.Equal(t, tt.want.statusCode, step2.StatusCode)
