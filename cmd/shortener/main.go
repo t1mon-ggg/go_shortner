@@ -36,7 +36,6 @@ func (db tmpDB) Router(r chi.Router) {
 
 func OtherHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Bad request", http.StatusBadRequest)
-	return
 }
 
 func (db tmpDB) PostHandler(w http.ResponseWriter, r *http.Request) {
@@ -50,35 +49,29 @@ func (db tmpDB) PostHandler(w http.ResponseWriter, r *http.Request) {
 	db[surl] = slongURL
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("http://%s/%s", r.Host, surl)))
-	return
 }
 
 func (db tmpDB) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 	if len(db) == 0 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
 	}
 	p := r.RequestURI
 	p = p[1:]
 	if _, ok := db[p]; !ok {
 		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
 	}
 	if len(p) != 8 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
 	}
 	lurl := db[p]
 	w.Header().Set("Location", lurl)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Write([]byte{})
-	return
 }
 
 func DefaultGetHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Empty request", http.StatusBadRequest)
-	return
 }
 
 func main() {
