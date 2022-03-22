@@ -48,9 +48,8 @@ func (db tmpDB) PostHandler(w http.ResponseWriter, r *http.Request) {
 	slongURL := string(blongURL)
 	surl := app.RandStringRunes(8)
 	db[surl] = slongURL
-	log.Println(surl, "=", slongURL)
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("http://%s/%s", addr, surl)))
+	w.Write([]byte(fmt.Sprintf("http://%s/%s", r.Host, surl)))
 	return
 }
 
@@ -62,12 +61,15 @@ func (db tmpDB) GetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	p := r.RequestURI
 	p = p[1:]
+	if _, ok := db[p]; !ok {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
 	if len(p) != 8 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 	lurl := db[p]
-	log.Println(p, "=", lurl)
 	w.Header().Set("Location", lurl)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Write([]byte{})
