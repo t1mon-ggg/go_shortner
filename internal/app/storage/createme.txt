@@ -1,9 +1,3 @@
 {"ABCDabcd":"https://yandex.ru"}
-{"djsvndAD":"http://example.org"}
 {"12345678":"http://example1.org"}
-{"ABCDabcd":"https://yandex.ru"}
 {"djsvndAD":"http://example.org"}
-{"12345678":"http://example1.org"}
-{"ABCDabcd":"https://yandex.ru"}
-{"djsvndAD":"http://example.org"}
-{"12345678":"http://example1.org"}

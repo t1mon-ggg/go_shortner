@@ -12,6 +12,8 @@ type FileDB struct {
 	encoder *json.Encoder
 }
 
+type DB map[string]string
+
 func checkFile(filename string) error {
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
@@ -23,25 +25,23 @@ func checkFile(filename string) error {
 	return nil
 }
 
-func NewCoder(filename string) (*FileDB, error) {
+func (f *FileDB) NewCoder(filename string) error {
 	err := checkFile(filename)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND, 0777)
-	return &FileDB{
-			file:    file,
-			decoder: bufio.NewScanner(file),
-			encoder: json.NewEncoder(file),
-		},
-		nil
+	f.file = file
+	f.decoder = bufio.NewScanner(file)
+	f.encoder = json.NewEncoder(file)
+	return nil
 }
 
 func (f *FileDB) Close() error {
 	return f.file.Close()
 }
 
-func (f *FileDB) Write(m map[string]string) error {
+func (f *FileDB) Write(m DB) error {
 	for i := range m {
 		mm := make(map[string]string)
 		mm[i] = m[i]

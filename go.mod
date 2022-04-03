@@ -1,4 +1,4 @@
-module github.com/t1mon-ggg/go_shortner.git
+module github.com/t1mon-ggg/go_shortner
 
 go 1.18
 

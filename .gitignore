@@ -21,4 +21,5 @@ vendor/
 # IDEs directories
 .idea
 .vscode
-cmd/shortener/storage.json
+cmd/shortener/storage
+internal/app/storage/createme.txt

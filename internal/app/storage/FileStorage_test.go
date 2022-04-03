@@ -21,14 +21,16 @@ func TestNewCoder(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewCoder(tt.args)
+			f := FileDB{}
+			err := f.NewCoder(tt.args)
 			require.NoError(t, err)
 		})
 	}
 }
 
 func TestFileDB_Write(t *testing.T) {
-	file, _ := NewCoder("createme.txt")
+	f := FileDB{}
+	_ = f.NewCoder("createme.txt")
 	tests := []struct {
 		name string
 		f    *FileDB
@@ -36,14 +38,14 @@ func TestFileDB_Write(t *testing.T) {
 	}{
 		{
 			name: "write json to file",
-			f:    file,
+			f:    &f,
 			args: map[string]string{
 				"ABCDabcd": "https://yandex.ru",
 			},
 		},
 		{
 			name: "write  many jsons to file",
-			f:    file,
+			f:    &f,
 			args: map[string]string{
 				"djsvndAD": "http://example.org",
 				"12345678": "http://example1.org",
@@ -59,15 +61,16 @@ func TestFileDB_Write(t *testing.T) {
 }
 
 func TestFileDB_Read(t *testing.T) {
-	file, _ := NewCoder("createme.txt")
+	f := FileDB{}
+	_ = f.NewCoder("createme.txt")
 	tests := []struct {
 		name string
 		f    *FileDB
 		want map[string]string
 	}{
 		{
-			name: "write json from file",
-			f:    file,
+			name: "read json file",
+			f:    &f,
 			want: map[string]string{
 				"ABCDabcd": "https://yandex.ru",
 				"djsvndAD": "http://example.org",

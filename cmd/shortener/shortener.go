@@ -11,7 +11,8 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 
-	"github.com/t1mon-ggg/go_shortner/internal/app/rand"
+	rand "github.com/t1mon-ggg/go_shortner/internal/app/rand"
+	storage "github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
 
 type OsVars struct {
@@ -23,7 +24,7 @@ type OsVars struct {
 var AppVars = OsVars{
 	BaseURL:         "/",
 	ServerAddress:   "127.0.0.1:8080",
-	FileStoragePath: "./storage.json",
+	FileStoragePath: "./storage",
 }
 
 // {"url":"<some_url>"}
@@ -39,6 +40,7 @@ type LURL struct {
 type DB map[string]string
 
 var db DB
+var stor storage.FileDB
 
 func (db *DB) Router(r chi.Router) {
 	r.Get("/", DefaultGetHandler)
@@ -59,10 +61,12 @@ func (db *DB) PostHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 	slongURL := string(blongURL)
-	surl := AppVars.BaseURL + rand.RandStringRunes(8)
+	surl := rand.RandStringRunes(8)
 	(*db)[surl] = slongURL
+	rec := map[string]string{surl: slongURL}
+	stor.Write(storage.DB(rec))
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("http://%s%s", r.Host, surl)))
+	w.Write([]byte(fmt.Sprintf("http://%s%s%s", r.Host, AppVars.BaseURL, surl)))
 }
 
 func (db *DB) PostApiHandler(w http.ResponseWriter, r *http.Request) {
@@ -82,11 +86,13 @@ func (db *DB) PostApiHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("JSON Unmarshal error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
-	short := AppVars.BaseURL + rand.RandStringRunes(8)
+	short := rand.RandStringRunes(8)
 	(*db)[short] = longURL.LongURL
+	rec := map[string]string{short: longURL.LongURL}
+	stor.Write(storage.DB(rec))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	jbody := SURL{ShortURL: fmt.Sprintf("http://%s%s", r.Host, short)}
+	jbody := SURL{ShortURL: fmt.Sprintf("http://%s%s%s", r.Host, AppVars.BaseURL, short)}
 	abody, err := json.Marshal(jbody)
 	if err != nil {
 		log.Println("JSON Marshal error", err)
@@ -137,6 +143,15 @@ func (AppVars *OsVars) settings() {
 
 func init() {
 	AppVars.settings()
+	stor = storage.FileDB{}
+	stor.NewCoder(AppVars.FileStoragePath)
+	m, err := stor.Read()
+	db = DB(m)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Restored %d records", len(db))
+
 }
 
 func main() {

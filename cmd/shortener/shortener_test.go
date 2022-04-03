@@ -232,3 +232,24 @@ func TestRouter(t *testing.T) {
 		})
 	}
 }
+
+func TestOsVars_settings(t *testing.T) {
+	tests := []struct {
+		name    string
+		AppVars *OsVars
+		want    string
+	}{
+		{
+			name:    "Test FileStoragePath",
+			AppVars: nil,
+			want:    "./storage",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.AppVars = &OsVars{}
+			tt.AppVars.settings()
+			require.Equal(t, tt.AppVars.FileStoragePath, tt.want)
+		})
+	}
+}
