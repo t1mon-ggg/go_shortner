@@ -7,10 +7,24 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/caarlos0/env"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/t1mon-ggg/go_shortner.git/internal/app"
+
+	"github.com/t1mon-ggg/go_shortner/internal/app/rand"
 )
+
+type OsVars struct {
+	BaseURL         string `env:"BASE_URL"`
+	ServerAddress   string `env:"SERVER_ADDRESS"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+}
+
+var AppVars = OsVars{
+	BaseURL:         "/",
+	ServerAddress:   "127.0.0.1:8080",
+	FileStoragePath: "./storage.json",
+}
 
 // {"url":"<some_url>"}
 // {"result":"<shorten_url>"}
@@ -22,9 +36,11 @@ type LURL struct {
 	LongURL string `json:"url"`
 }
 
-type tmpDB map[string]string
+type DB map[string]string
 
-func (db *tmpDB) Router(r chi.Router) {
+var db DB
+
+func (db *DB) Router(r chi.Router) {
 	r.Get("/", DefaultGetHandler)
 	r.Get("/{^[a-zA-Z]}", db.GetHandler)
 	r.Post("/", db.PostHandler)
@@ -36,20 +52,20 @@ func OtherHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Bad request", http.StatusBadRequest)
 }
 
-func (db *tmpDB) PostHandler(w http.ResponseWriter, r *http.Request) {
+func (db *DB) PostHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	blongURL, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
 	}
 	slongURL := string(blongURL)
-	surl := app.RandStringRunes(8)
+	surl := AppVars.BaseURL + rand.RandStringRunes(8)
 	(*db)[surl] = slongURL
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("http://%s/%s", r.Host, surl)))
+	w.Write([]byte(fmt.Sprintf("http://%s%s", r.Host, surl)))
 }
 
-func (db *tmpDB) PostApiHandler(w http.ResponseWriter, r *http.Request) {
+func (db *DB) PostApiHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	ctype := r.Header.Get("Content-Type")
 	if ctype != "application/json" {
@@ -66,11 +82,11 @@ func (db *tmpDB) PostApiHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("JSON Unmarshal error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
-	short := app.RandStringRunes(8)
+	short := AppVars.BaseURL + rand.RandStringRunes(8)
 	(*db)[short] = longURL.LongURL
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	jbody := SURL{ShortURL: fmt.Sprintf("http://%s/%s", r.Host, short)}
+	jbody := SURL{ShortURL: fmt.Sprintf("http://%s%s", r.Host, short)}
 	abody, err := json.Marshal(jbody)
 	if err != nil {
 		log.Println("JSON Marshal error", err)
@@ -79,7 +95,7 @@ func (db *tmpDB) PostApiHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(abody)
 }
 
-func (db tmpDB) GetHandler(w http.ResponseWriter, r *http.Request) {
+func (db DB) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 	if len(db) == 0 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
@@ -102,9 +118,28 @@ func DefaultGetHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Empty request", http.StatusBadRequest)
 }
 
+func (AppVars *OsVars) settings() {
+	var c OsVars
+	err := env.Parse(&c)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if c.BaseURL != "" {
+		AppVars.BaseURL = c.BaseURL
+	}
+	if c.ServerAddress != "" {
+		AppVars.ServerAddress = c.ServerAddress
+	}
+	if c.FileStoragePath != "" {
+		AppVars.FileStoragePath = c.FileStoragePath
+	}
+}
+
+func init() {
+	AppVars.settings()
+}
+
 func main() {
-	db := make(tmpDB)
-	db["ABCDabcd"] = "https://yandex.ru"
 
 	r := chi.NewRouter()
 
@@ -115,6 +150,6 @@ func main() {
 
 	r.Route("/", db.Router)
 
-	http.ListenAndServe(":8080", r)
+	http.ListenAndServe(AppVars.ServerAddress, r)
 
 }

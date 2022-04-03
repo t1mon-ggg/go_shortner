@@ -38,7 +38,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path, body string, c
 }
 
 func TestRouter(t *testing.T) {
-	db := make(tmpDB)
+	db := make(DB)
 	db["ABCDabcd"] = "http://example.org"
 	type want struct {
 		statusCode int
