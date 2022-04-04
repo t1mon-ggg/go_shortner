@@ -12,7 +12,7 @@ type OsVars struct {
 
 func NewConfig() *OsVars {
 	s := &OsVars{
-		BaseURL:         "/",
+		BaseURL:         "http://127.0.0.1:8080",
 		ServerAddress:   "127.0.0.1:8080",
 		FileStoragePath: "./storage",
 	}

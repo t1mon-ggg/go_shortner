@@ -62,7 +62,7 @@ func (db *DB) postHandler(w http.ResponseWriter, r *http.Request) {
 	rec := map[string]string{surl: slongURL}
 	db.Storage.Write(rec)
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("http://%s%s%s", r.Host, db.Config.BaseURL, surl)))
+	w.Write([]byte(fmt.Sprintf("http://%s/%s", db.Config.BaseURL, surl)))
 }
 
 func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +97,7 @@ func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	db.Storage.Write(rec)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	jbody := sURL{ShortURL: fmt.Sprintf("http://%s%s%s", r.Host, (*db).Config.BaseURL, short)}
+	jbody := sURL{ShortURL: fmt.Sprintf("http://%s/%s", (*db).Config.BaseURL, short)}
 	abody, err := json.Marshal(jbody)
 	if err != nil {
 		log.Println("JSON Marshal error", err)
