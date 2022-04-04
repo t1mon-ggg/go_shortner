@@ -1,7 +1,6 @@
 package storage
 
-type Database interface {
-	OpenFile(string) error
+var Database interface {
 	Write(map[string]string) error
 	Read() (map[string]string, error)
 	Close() error

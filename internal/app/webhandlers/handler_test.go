@@ -1,9 +1,10 @@
-package main
+package webhandlers
 
 import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -11,6 +12,8 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/t1mon-ggg/go_shortner/internal/app/config"
+	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path, body string, ctype map[string]string) (*http.Response, string) {
@@ -37,9 +40,11 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path, body string, c
 	return resp, string(respBody)
 }
 
-func TestRouter(t *testing.T) {
-	db := make(DB)
-	db["ABCDabcd"] = "http://example.org"
+func TestDB_Router(t *testing.T) {
+	db := NewApp()
+	db.Storage = *storage.NewFileDB("./createme.txt")
+	db.Config = *config.NewConfig()
+	db.Data["ABCDabcd"] = "http://example.org"
 	type want struct {
 		statusCode int
 		data       string
@@ -231,25 +236,10 @@ func TestRouter(t *testing.T) {
 			}
 		})
 	}
-}
+	t.Run("FileStorage Close test", func(t *testing.T) {
+		db.Storage.Close()
+		err := os.Remove("./createme.txt")
+		require.NoError(t, err)
+	})
 
-func TestOsVars_settings(t *testing.T) {
-	tests := []struct {
-		name    string
-		AppVars *OsVars
-		want    string
-	}{
-		{
-			name:    "Test FileStoragePath",
-			AppVars: nil,
-			want:    "./storage",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.AppVars = &OsVars{}
-			tt.AppVars.settings()
-			require.Equal(t, tt.AppVars.FileStoragePath, tt.want)
-		})
-	}
 }

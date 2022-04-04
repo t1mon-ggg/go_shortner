@@ -1,3 +1,0 @@
-{"ABCDabcd":"https://yandex.ru"}
-{"12345678":"http://example1.org"}
-{"djsvndAD":"http://example.org"}

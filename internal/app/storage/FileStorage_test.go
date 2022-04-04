@@ -1,12 +1,14 @@
 package storage
 
 import (
+	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewCoder(t *testing.T) {
+func Test_openFile(t *testing.T) {
 	type args struct {
 		filename string
 	}
@@ -18,34 +20,38 @@ func TestNewCoder(t *testing.T) {
 			name: "NotExistent file",
 			args: "createme.txt",
 		},
+		{
+			name: "Duplicated file",
+			args: "createme.txt",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := FileDB{}
-			err := f.NewCoder(tt.args)
+			defer f.Close()
+			err := f.openFile(tt.args)
 			require.NoError(t, err)
 		})
 	}
+	t.Run("Remove test file", func(t *testing.T) {
+		err := os.Remove("createme.txt")
+		require.NoError(t, err)
+	})
 }
 
 func TestFileDB_Write(t *testing.T) {
-	f := FileDB{}
-	_ = f.NewCoder("createme.txt")
 	tests := []struct {
 		name string
-		f    *FileDB
 		args map[string]string
 	}{
 		{
 			name: "write json to file",
-			f:    &f,
 			args: map[string]string{
 				"ABCDabcd": "https://yandex.ru",
 			},
 		},
 		{
 			name: "write  many jsons to file",
-			f:    &f,
 			args: map[string]string{
 				"djsvndAD": "http://example.org",
 				"12345678": "http://example1.org",
@@ -54,15 +60,27 @@ func TestFileDB_Write(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.f.Write(tt.args)
+			f := NewFileDB("createme.txt")
+			defer f.Close()
+			err := f.Write(tt.args)
 			require.NoError(t, err)
 		})
 	}
+	t.Run("Storage Close test", func(t *testing.T) {
+		err := os.Remove("createme.txt")
+		assert.Nil(t, err)
+	})
 }
 
 func TestFileDB_Read(t *testing.T) {
-	f := FileDB{}
-	_ = f.NewCoder("createme.txt")
+	f := NewFileDB("createme.txt")
+	data := map[string]string{
+		"ABCDabcd": "https://yandex.ru",
+		"djsvndAD": "http://example.org",
+		"12345678": "http://example1.org",
+	}
+	f.Write(data)
+
 	tests := []struct {
 		name string
 		f    *FileDB
@@ -70,7 +88,7 @@ func TestFileDB_Read(t *testing.T) {
 	}{
 		{
 			name: "read json file",
-			f:    &f,
+			f:    f,
 			want: map[string]string{
 				"ABCDabcd": "https://yandex.ru",
 				"djsvndAD": "http://example.org",
@@ -81,8 +99,13 @@ func TestFileDB_Read(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.f.Read()
+			defer tt.f.Close()
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}
+	t.Run("Storage Close test", func(t *testing.T) {
+		err := os.Remove("createme.txt")
+		assert.Nil(t, err)
+	})
 }
