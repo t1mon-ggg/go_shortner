@@ -22,8 +22,8 @@ type DB map[string]string
 
 func checkFile(filename string) error {
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		f, err := os.Create(filename)
-		if err != nil {
+		f, createerr := os.Create(filename)
+		if createerr != nil {
 			return err
 		}
 		f.Close()
