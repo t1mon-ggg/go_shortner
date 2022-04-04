@@ -1,6 +1,7 @@
 package webhandlers
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -178,7 +179,7 @@ func TestDB_Router(t *testing.T) {
 			request: request{
 				method: http.MethodPost,
 				query:  "/api/shorten",
-				body:   "{\"url\":\"http://example.org\"}",
+				body:   `{"url":"http://ip4fz0o0uwmq.yandex/zukai69rdjyqnn/ejsqdy"}`,
 				rtype:  "APIShort",
 				ctype: map[string]string{
 					"Content-Type": "application/json",
@@ -187,6 +188,22 @@ func TestDB_Router(t *testing.T) {
 			want: want{
 				statusCode: 201,
 				data:       `{"result":\"http:\/\/\w+\.\w+\.\w\.\w:\d+\/\w{8}\"}`,
+			},
+		},
+		{
+			name: "API 2-Way test",
+			request: request{
+				method: http.MethodPost,
+				query:  "/api/shorten",
+				body:   `{"url":"http://ip4fz0o0uwmq.yandex/zukai69rdjyqnn/ejsqdy"}`,
+				rtype:  "APIShort 2-Way",
+				ctype: map[string]string{
+					"Content-Type": "application/json",
+				},
+			},
+			want: want{
+				statusCode: 307,
+				data:       "http://ip4fz0o0uwmq.yandex/zukai69rdjyqnn/ejsqdy",
 			},
 		},
 	}
@@ -231,6 +248,23 @@ func TestDB_Router(t *testing.T) {
 					t.Fatal("Regexp error")
 				}
 				assert.Equal(t, true, matched)
+			case "APIShort 2-Way":
+				type sURL struct {
+					ShortURL string `json:"result"`
+				}
+				rex := regexp.MustCompile(`{"result":\"http:\/\/\w+\.\w+\.\w\.\w:\d+\/\w{8}\"}`)
+				url := sURL{}
+				err := json.Unmarshal([]byte(rex.FindString(body)), &url)
+				require.NoError(t, err)
+				rex = regexp.MustCompile(`\w{8}`)
+				short := "/" + rex.FindString(url.ShortURL)
+				step2, _ := testRequest(t, ts, http.MethodGet, short, "", map[string]string{"Content-Type": "text/plain; charset=utf-8"})
+				defer step2.Body.Close()
+				assert.Equal(t, tt.want.statusCode, step2.StatusCode)
+				if tt.want.statusCode != 400 {
+					header := step2.Header.Get("Location")
+					require.Equal(t, tt.want.data, header)
+				}
 			default:
 				require.Equal(t, tt.want.statusCode, response.StatusCode)
 			}
