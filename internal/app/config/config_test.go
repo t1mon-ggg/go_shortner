@@ -21,7 +21,7 @@ func TestOsVars_Read(t *testing.T) {
 		},
 		{
 			name: "Test BASE_URL",
-			want: "/",
+			want: "http://127.0.0.1:8080",
 		},
 	}
 	for _, tt := range tests {
