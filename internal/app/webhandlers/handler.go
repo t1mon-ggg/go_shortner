@@ -44,12 +44,10 @@ func (db *DB) Router(r chi.Router) {
 
 func defaultGetHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Empty request", http.StatusBadRequest)
-	return
 }
 
 func otherHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Bad request", http.StatusBadRequest)
-	return
 }
 
 func (db *DB) postHandler(w http.ResponseWriter, r *http.Request) {
