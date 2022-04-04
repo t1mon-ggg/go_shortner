@@ -40,6 +40,9 @@ func (f *FileDB) openFile(filename string) error {
 		return err
 	}
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND, 0777)
+	if err != nil {
+		return err
+	}
 	f.file = file
 	return nil
 }
