@@ -21,10 +21,11 @@ func NewFileDB(name string) *FileDB {
 type DB map[string]string
 
 func checkFile(filename string) error {
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
+	_, staterr := os.Stat(filename)
+	if os.IsNotExist(staterr) {
 		f, createerr := os.Create(filename)
 		if createerr != nil {
-			return err
+			return createerr
 		}
 		f.Close()
 	}
