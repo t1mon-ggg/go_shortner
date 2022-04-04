@@ -67,10 +67,10 @@ func (db *DB) postHandler(w http.ResponseWriter, r *http.Request) {
 
 func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	type sURL struct {
-		ShortURL string `json:"result"`
+		shortURL string `json:"result"`
 	}
 	type lURL struct {
-		LongURL string `json:"url"`
+		longURL string `json:"url"`
 	}
 	defer r.Body.Close()
 	ctype := r.Header.Get("Content-Type")
@@ -92,12 +92,12 @@ func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	short := rand.RandStringRunes(8)
-	(*db).Data[short] = longURL.LongURL
-	rec := map[string]string{short: longURL.LongURL}
+	(*db).Data[short] = longURL.longURL
+	rec := map[string]string{short: longURL.longURL}
 	db.Storage.Write(rec)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	jbody := sURL{ShortURL: fmt.Sprintf("http://%s%s%s", r.Host, db.Config.BaseURL, short)}
+	jbody := sURL{shortURL: fmt.Sprintf("http://%s%s%s", r.Host, (*db).Config.BaseURL, short)}
 	abody, err := json.Marshal(jbody)
 	if err != nil {
 		log.Println("JSON Marshal error", err)
