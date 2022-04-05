@@ -40,7 +40,7 @@ func main() {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(webhandlers.GzipHandle)
+	r.Use(middleware.Compress(5, "gzip", "deflate"))
 
 	r.Route("/", AppData.Router)
 
