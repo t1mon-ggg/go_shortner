@@ -35,6 +35,7 @@ func main() {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.AllowContentEncoding("deflate", "gzip", "br"))
 	r.Use(middleware.Compress(5))
 
 	r.Route("/", AppData.Router)
