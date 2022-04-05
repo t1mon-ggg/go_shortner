@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -31,6 +32,8 @@ func init() {
 }
 
 func main() {
+	AppData.Config.Cli()
+	fmt.Println(AppData.Config)
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"flag"
+
 	"github.com/caarlos0/env"
 )
 
@@ -35,4 +37,33 @@ func (cfg *OsVars) Read() error {
 		cfg.FileStoragePath = c.FileStoragePath
 	}
 	return nil
+}
+
+func (cfg *OsVars) Cli() {
+	baseurlptr := flag.String("b", "", "BASE_URL")
+	srvaddrptr := flag.String("a", "", "SERVER_ADDRESS")
+	fpathptr := flag.String("f", "", "FILE_STORAGE_PATH")
+
+	flag.Parse()
+	if isFlagPassed("b") {
+		cfg.BaseURL = *baseurlptr
+	}
+	if isFlagPassed("a") {
+		cfg.ServerAddress = *srvaddrptr
+	}
+
+	if isFlagPassed("f") {
+		cfg.FileStoragePath = *fpathptr
+	}
+
+}
+
+func isFlagPassed(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
 }
