@@ -1,9 +1,11 @@
 package webhandlers
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,13 +21,40 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
 
+func gziped(ctype map[string]string) bool {
+	for i := range ctype {
+		if i == "Content-Encoding" && ctype[i] == "gzip" {
+			return true
+		}
+	}
+	return false
+}
+
+func compress(data []byte) (string, error) {
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+	if _, err := gz.Write([]byte(data)); err != nil {
+		return "", err
+	}
+	if err := gz.Close(); err != nil {
+		return "", err
+	}
+	return string(b.Bytes()), nil
+}
+
 func testRequest(t *testing.T, ts *httptest.Server, method, path, body string, ctype map[string]string) (*http.Response, string) {
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
-	bodyreq := strings.NewReader(body)
+	var bodyreq *strings.Reader
+	if gziped(ctype) {
+		c, _ := compress([]byte(body))
+		bodyreq = strings.NewReader(c)
+	} else {
+		bodyreq = strings.NewReader(body)
+	}
 	req, err := http.NewRequest(method, ts.URL+path, bodyreq)
 	require.NoError(t, err)
 	for i := range ctype {
@@ -37,7 +66,6 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path, body string, c
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-
 	defer resp.Body.Close()
 
 	return resp, string(respBody)
@@ -208,33 +236,34 @@ func TestDB_Router(t *testing.T) {
 				data:       "http://ip4fz0o0uwmq.yandex/zukai69rdjyqnn/ejsqdy",
 			},
 		},
-		// {
-		// 	name: "Create short url test with compress",
-		// 	request: request{
-		// 		method: http.MethodPost,
-		// 		query:  "/",
-		// 		body:   "http://example.org/",
-		// 		rtype:  "CreateShortCompress",
-		// 		ctype: map[string]string{
-		// 			"Content-Type":    "text/plain; charset=utf-8",
-		// 			"Accept-Encoding": "gzip, deflate, br",
-		// 		},
-		// 	},
-		// 	want: want{
-		// 		statusCode: 201,
-		// 		data:       `\w{8}`,
-		// 	},
-		// },
+		{
+			name: "Unshort compressed",
+			request: request{
+				method: http.MethodGet,
+				query:  "/ABCDabcd",
+				body:   "http://example.org",
+				rtype:  "GetLong",
+				ctype: map[string]string{
+					"Content-Type":    "text/plain; charset=utf-8",
+					"Accept-Encoding": "gzip, deflate, br",
+				},
+			},
+			want: want{
+				statusCode: 307,
+				data:       "http://example.org",
+			},
+		},
 		{
 			name: "Create api short url test with compress",
 			request: request{
 				method: http.MethodPost,
 				query:  "/api/shorten",
-				body:   `{"url":"http://ip4fz0o0uwmq.yandex/zukai69rdjyqnn/ejsqdy"}`,
-				rtype:  "APIShortCompress",
+				body:   `{"url":"http://fghjt.ru"}`,
+				rtype:  "APIShortCompressRequest",
 				ctype: map[string]string{
-					"Content-Type":    "application/json",
-					"Accept-Encoding": "gzip, deflate, br",
+					"Content-Type":     "application/json",
+					"Accept-Encoding":  "gzip, deflate, br",
+					"Content-Encoding": "gzip",
 				},
 			},
 			want: want{
@@ -245,13 +274,12 @@ func TestDB_Router(t *testing.T) {
 	}
 	for _, tt := range tests {
 		r := chi.NewRouter()
-		r.Use(DecompressRequest)
 		r.Use(middleware.RequestID)
 		r.Use(middleware.RealIP)
 		r.Use(middleware.Logger)
 		r.Use(middleware.Recoverer)
-		r.Use(middleware.AllowContentEncoding("gzip", "br", "deflate"))
-		r.Use(middleware.Compress(5, "application/json"))
+		// r.Use(middleware.AllowContentEncoding("gzip", "br", "deflate"))
+		// r.Use(middleware.Compress(5, "application/json"))
 		r.Route("/", db.Router)
 		ts := httptest.NewServer(r)
 		defer ts.Close()
@@ -319,6 +347,9 @@ func TestDB_Router(t *testing.T) {
 					t.Fatal("Regexp error")
 				}
 				assert.Equal(t, true, matched)
+			case "APIShortCompressRequest":
+				log.Println(body)
+
 			default:
 				require.Equal(t, tt.want.statusCode, response.StatusCode)
 			}

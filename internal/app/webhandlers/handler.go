@@ -1,11 +1,11 @@
 package webhandlers
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
@@ -54,6 +54,7 @@ func otherHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *DB) postHandler(w http.ResponseWriter, r *http.Request) {
+	r = decompressRequest(r)
 	defer r.Body.Close()
 	blongURL, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -69,6 +70,7 @@ func (db *DB) postHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
+	r = decompressRequest(r)
 	type sURL struct {
 		ShortURL string `json:"result"`
 	}
@@ -83,6 +85,7 @@ func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	longURL := lURL{}
 	body, err := io.ReadAll(r.Body)
+	log.Println("This is fucking request", body)
 	if err != nil {
 		log.Println("Body Error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -111,6 +114,8 @@ func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db DB) GetHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.Header)
+	r = decompressRequest(r)
 	if len(db.Data) == 0 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
@@ -131,28 +136,24 @@ func (db DB) GetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte{})
 }
 
-func DecompressRequest(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAB", r.Header)
-		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") || !strings.Contains(r.Header.Get("Content-Encoding"), "flate") || !strings.Contains(r.Header.Get("Content-Encoding"), "br") {
-			next.ServeHTTP(w, r)
-			return
-		}
+type request http.Request
+
+func decompressRequest(r *http.Request) *http.Request {
+	if (strings.Contains(r.Header.Get("Content-Encoding"), "gzip")) || (strings.Contains(r.Header.Get("Content-Encoding"), "br")) || (strings.Contains(r.Header.Get("Content-Encoding"), "deflate")) {
+		defer r.Body.Close()
 		gz, err := gzip.NewReader(r.Body)
 		if err != nil {
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+			log.Println(err)
+			return nil
 		}
 		defer gz.Close()
 		body, err := io.ReadAll(gz)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			log.Println(err)
+			return nil
 		}
-		rr := r
-		newreader := strings.NewReader(string(body))
-		b := ioutil.NopCloser(newreader)
-		rr.Body = b
-		next.ServeHTTP(w, rr)
-	})
+		r.ContentLength = int64(len(body))
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
+	}
+	return r
 }
