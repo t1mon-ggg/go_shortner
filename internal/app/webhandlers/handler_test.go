@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -352,7 +351,11 @@ func TestDB_Router(t *testing.T) {
 				require.Equal(t, tt.want.statusCode, response.StatusCode)
 				r := strings.NewReader(body)
 				s, _ := io.ReadAll(r)
-				fmt.Println(string(s))
+				matched, err := regexp.Match(tt.want.data, []byte(s))
+				if err != nil {
+					t.Fatal("Regexp error")
+				}
+				assert.Equal(t, true, matched)
 
 			default:
 				require.Equal(t, tt.want.statusCode, response.StatusCode)
