@@ -34,11 +34,12 @@ func main() {
 	}
 	r := chi.NewRouter()
 
-	r.Use(middleware.Compress(5))
+	//r.Use(middleware.Compress(5))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(webhandlers.DecompressRequest)
 
 	r.Route("/", AppData.Router)
 

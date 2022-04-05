@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -262,7 +263,6 @@ func TestDB_Router(t *testing.T) {
 				rtype:  "APIShortCompressRequest",
 				ctype: map[string]string{
 					"Content-Type":     "application/json",
-					"Accept-Encoding":  "gzip, deflate, br",
 					"Content-Encoding": "gzip",
 				},
 			},
@@ -276,10 +276,11 @@ func TestDB_Router(t *testing.T) {
 		r := chi.NewRouter()
 		r.Use(middleware.RequestID)
 		r.Use(middleware.RealIP)
-		r.Use(middleware.Logger)
+		//r.Use(middleware.Logger)
 		r.Use(middleware.Recoverer)
 		// r.Use(middleware.AllowContentEncoding("gzip", "br", "deflate"))
 		// r.Use(middleware.Compress(5, "application/json"))
+		r.Use(DecompressRequest)
 		r.Route("/", db.Router)
 		ts := httptest.NewServer(r)
 		defer ts.Close()
@@ -341,14 +342,17 @@ func TestDB_Router(t *testing.T) {
 				require.NotEmpty(t, response.Header.Get("Content-Encoding"))
 				rdata := strings.NewReader(body)
 				r, _ := gzip.NewReader(rdata)
-				s, _ := ioutil.ReadAll(r)
+				s, _ := io.ReadAll(r)
 				matched, err := regexp.Match(tt.want.data, []byte(s))
 				if err != nil {
 					t.Fatal("Regexp error")
 				}
 				assert.Equal(t, true, matched)
 			case "APIShortCompressRequest":
-				log.Println(body)
+				require.Equal(t, tt.want.statusCode, response.StatusCode)
+				r := strings.NewReader(body)
+				s, _ := io.ReadAll(r)
+				fmt.Println(string(s))
 
 			default:
 				require.Equal(t, tt.want.statusCode, response.StatusCode)

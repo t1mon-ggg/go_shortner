@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/t1mon-ggg/go_shortner/internal/app/config"
@@ -54,7 +55,6 @@ func otherHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *DB) postHandler(w http.ResponseWriter, r *http.Request) {
-	r = decompressRequest(r)
 	defer r.Body.Close()
 	blongURL, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -70,7 +70,6 @@ func (db *DB) postHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
-	r = decompressRequest(r)
 	type sURL struct {
 		ShortURL string `json:"result"`
 	}
@@ -85,7 +84,6 @@ func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	longURL := lURL{}
 	body, err := io.ReadAll(r.Body)
-	log.Println("This is fucking request", body)
 	if err != nil {
 		log.Println("Body Error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -114,8 +112,6 @@ func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db DB) GetHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.Header)
-	r = decompressRequest(r)
 	if len(db.Data) == 0 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
@@ -136,24 +132,33 @@ func (db DB) GetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte{})
 }
 
-type request http.Request
+func DecompressRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if (strings.Contains(r.Header.Get("Content-Encoding"), "gzip")) || (strings.Contains(r.Header.Get("Content-Encoding"), "br")) || (strings.Contains(r.Header.Get("Content-Encoding"), "deflate")) {
+			defer r.Body.Close()
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			defer gz.Close()
+			body, err := io.ReadAll(gz)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			r.ContentLength = int64(len(body))
+			r.Body = io.NopCloser(bytes.NewBuffer(body))
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
-func decompressRequest(r *http.Request) *http.Request {
-	if (strings.Contains(r.Header.Get("Content-Encoding"), "gzip")) || (strings.Contains(r.Header.Get("Content-Encoding"), "br")) || (strings.Contains(r.Header.Get("Content-Encoding"), "deflate")) {
-		defer r.Body.Close()
-		gz, err := gzip.NewReader(r.Body)
-		if err != nil {
-			log.Println(err)
-			return nil
-		}
-		defer gz.Close()
-		body, err := io.ReadAll(gz)
-		if err != nil {
-			log.Println(err)
-			return nil
-		}
-		r.ContentLength = int64(len(body))
-		r.Body = io.NopCloser(bytes.NewBuffer(body))
-	}
-	return r
+func TimerTrace(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tStart := time.Now()
+
+		tEnd := time.Since(tStart)
+		log.Printf("Duration for a request %s\r\n", tEnd)
+	})
 }
