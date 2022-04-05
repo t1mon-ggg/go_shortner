@@ -34,7 +34,7 @@ func main() {
 	}
 	r := chi.NewRouter()
 
-	r.Use(middleware.AllowContentEncoding("deflate", "gzip", "br"))
+	r.Use(webhandlers.GzipHandle)
 	r.Use(middleware.Compress(6))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
