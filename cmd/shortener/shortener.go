@@ -34,8 +34,8 @@ func main() {
 	}
 	r := chi.NewRouter()
 
-	r.Use(webhandlers.GzipHandle)
-	r.Use(middleware.Compress(6))
+	r.Use(webhandlers.DecompressRequest)
+	r.Use(middleware.Compress(5))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)

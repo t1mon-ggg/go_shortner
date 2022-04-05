@@ -131,15 +131,15 @@ func (db DB) GetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte{})
 }
 
-func GzipHandle(next http.Handler) http.Handler {
+func DecompressRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") || !strings.Contains(r.Header.Get("Accept-Encoding"), "flate") || !strings.Contains(r.Header.Get("Accept-Encoding"), "br") {
+		log.Println("BBBBBBBBBBBBBBBBBBBBBBBBBB", r.Header)
+		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") || !strings.Contains(r.Header.Get("Content-Encoding"), "flate") || !strings.Contains(r.Header.Get("Content-Encoding"), "br") {
 			next.ServeHTTP(w, r)
 			return
 		}
 		gz, err := gzip.NewReader(r.Body)
 		if err != nil {
-			log.Println(err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
