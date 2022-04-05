@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -15,25 +14,21 @@ import (
 var cfg *config.OsVars
 var AppData *webhandlers.DB
 
-func init() {
+func main() {
 	cfg := config.NewConfig()
 	err := cfg.Read()
 	if err != nil {
 		log.Fatal(err)
 	}
-	AppData = webhandlers.NewApp()
+	AppData := webhandlers.NewApp()
 	AppData.Config = *cfg
-	AppData.Storage = *storage.NewFileDB(AppData.Config.FileStoragePath)
-	AppData.Data, err = AppData.Storage.Read()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-}
-
-func main() {
 	AppData.Config.Cli()
-	fmt.Println(AppData.Config)
+	AppData.Storage = *storage.NewFileDB(AppData.Config.FileStoragePath)
+	AppData.Data, err = AppData.Storage.Read()
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)

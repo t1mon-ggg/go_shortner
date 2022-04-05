@@ -88,7 +88,7 @@ func (f *FileDB) Read() (map[string]string, error) {
 			return nil, err
 		}
 	}
-	log.Printf("Resored from file %d records\n", len(m))
+	log.Printf("Restored from file %d records\n", len(m))
 	err := f.Close()
 	if err != nil {
 		return nil, err
