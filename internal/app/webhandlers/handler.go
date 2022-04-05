@@ -133,7 +133,7 @@ func (db DB) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 func DecompressRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println("BBBBBBBBBBBBBBBBBBBBBBBBBB", r.Header)
+		log.Println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAB", r.Header)
 		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") || !strings.Contains(r.Header.Get("Content-Encoding"), "flate") || !strings.Contains(r.Header.Get("Content-Encoding"), "br") {
 			next.ServeHTTP(w, r)
 			return
