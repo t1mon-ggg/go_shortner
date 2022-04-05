@@ -1,11 +1,14 @@
 package webhandlers
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/t1mon-ggg/go_shortner/internal/app/config"
@@ -126,4 +129,30 @@ func (db DB) GetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", lurl)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Write([]byte{})
+}
+
+func GzipHandle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") || !strings.Contains(r.Header.Get("Accept-Encoding"), "flate") || !strings.Contains(r.Header.Get("Accept-Encoding"), "br") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		gz, err := gzip.NewReader(r.Body)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		defer gz.Close()
+		body, err := io.ReadAll(gz)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		rr := r
+		newreader := strings.NewReader(string(body))
+		b := ioutil.NopCloser(newreader)
+		rr.Body = b
+		next.ServeHTTP(w, rr)
+	})
 }

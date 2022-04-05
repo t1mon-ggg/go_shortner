@@ -29,14 +29,17 @@ func main() {
 	AppData.Config.Cli()
 	AppData.Storage = *storage.NewFileDB(AppData.Config.FileStoragePath)
 	AppData.Data, err = AppData.Storage.Read()
+	if err != nil {
+		log.Fatal(err)
+	}
 	r := chi.NewRouter()
 
+	r.Use(middleware.AllowContentEncoding("deflate", "gzip", "br"))
+	r.Use(middleware.Compress(6))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.AllowContentEncoding("deflate", "gzip", "br"))
-	r.Use(middleware.Compress(5))
 
 	r.Route("/", AppData.Router)
 
