@@ -31,16 +31,16 @@ func gziped(ctype map[string]string) bool {
 	return false
 }
 
-func compress(data []byte) (string, error) {
+func compress(data []byte) ([]byte, error) {
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
 	if _, err := gz.Write([]byte(data)); err != nil {
-		return "", err
+		return nil, err
 	}
 	if err := gz.Close(); err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(b.Bytes()), nil
+	return b.Bytes(), nil
 }
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path, body string, ctype map[string]string) (*http.Response, string) {
@@ -52,7 +52,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path, body string, c
 	var bodyreq *strings.Reader
 	if gziped(ctype) {
 		c, _ := compress([]byte(body))
-		bodyreq = strings.NewReader(c)
+		bodyreq = strings.NewReader(string(c))
 	} else {
 		bodyreq = strings.NewReader(body)
 	}
