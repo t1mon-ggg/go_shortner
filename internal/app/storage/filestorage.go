@@ -7,18 +7,18 @@ import (
 	"os"
 )
 
+//FileDB - структура для работы с фаловым хранилищем данных
 type FileDB struct {
 	name string
 	file *os.File
 }
 
+//NewFileDB - функция инициализирующая структура FileDB
 func NewFileDB(name string) *FileDB {
 	s := &FileDB{}
 	s.openFile(name)
 	return s
 }
-
-type DB map[string]string
 
 func checkFile(filename string) error {
 	_, staterr := os.Stat(filename)

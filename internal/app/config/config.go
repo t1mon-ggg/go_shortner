@@ -21,7 +21,7 @@ func NewConfig() *OsVars {
 	return s
 }
 
-func (cfg *OsVars) Read() error {
+func (cfg *OsVars) ReadEnv() error {
 	var c OsVars
 	err := env.Parse(&c)
 	if err != nil {
@@ -39,7 +39,7 @@ func (cfg *OsVars) Read() error {
 	return nil
 }
 
-func (cfg *OsVars) Cli() {
+func (cfg *OsVars) ReadCli() {
 	baseurlptr := flag.String("b", "", "BASE_URL")
 	srvaddrptr := flag.String("a", "", "SERVER_ADDRESS")
 	fpathptr := flag.String("f", "", "FILE_STORAGE_PATH")

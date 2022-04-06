@@ -1,6 +1,7 @@
 package config
 
 type Config interface {
-	Read() error
-	Cli()
+	//NewConfig() *OsVars
+	ReadEnv() error
+	ReadCli()
 }

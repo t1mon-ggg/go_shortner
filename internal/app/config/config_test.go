@@ -27,7 +27,7 @@ func TestOsVars_Read(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			AppVars := NewConfig()
-			err := AppVars.Read()
+			err := AppVars.ReadEnv()
 			require.NoError(t, err)
 			switch tt.name {
 			case "Test FILE_STORAGE_PATH":

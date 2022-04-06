@@ -11,22 +11,14 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/webhandlers"
 )
 
-var cfg *config.OsVars
-var AppData *webhandlers.DB
-
 func main() {
-	cfg := config.NewConfig()
-	err := cfg.Read()
-	if err != nil {
-		log.Fatal(err)
-	}
 	AppData := webhandlers.NewApp()
-	AppData.Config = *cfg
+	AppData.Config = *config.NewConfig()
+	err := AppData.Config.ReadEnv()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	AppData.Config.Cli()
+	AppData.Config.ReadCli()
 	AppData.Storage = *storage.NewFileDB(AppData.Config.FileStoragePath)
 	AppData.Data, err = AppData.Storage.Read()
 	if err != nil {

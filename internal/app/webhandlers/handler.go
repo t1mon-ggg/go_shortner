@@ -17,28 +17,28 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
 
-type DB struct {
+type app struct {
 	Storage storage.FileDB
 	Config  config.OsVars
-	Data    WebData
+	Data    map[string]string
 }
 
-type WebData map[string]string
+//type WebData map[string]string
 
-func NewData() WebData {
-	s := WebData(make(map[string]string))
+func NewData() map[string]string {
+	s := make(map[string]string)
 	return s
 }
 
-func NewApp() *DB {
-	s := DB{}
+func NewApp() *app {
+	s := app{}
 	s.Storage = storage.FileDB{}
 	s.Config = config.OsVars{}
 	s.Data = NewData()
 	return &s
 }
 
-func (db *DB) Router(r chi.Router) {
+func (db *app) Router(r chi.Router) {
 	r.Get("/", defaultGetHandler)
 	r.Get("/{^[a-zA-Z]}", db.GetHandler)
 	r.Post("/", db.postHandler)
@@ -54,7 +54,7 @@ func otherHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Bad request", http.StatusBadRequest)
 }
 
-func (db *DB) postHandler(w http.ResponseWriter, r *http.Request) {
+func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	blongURL, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -69,7 +69,7 @@ func (db *DB) postHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("%s/%s", db.Config.BaseURL, surl)))
 }
 
-func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
+func (db *app) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	type sURL struct {
 		ShortURL string `json:"result"`
 	}
@@ -111,7 +111,7 @@ func (db *DB) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(abody)
 }
 
-func (db DB) GetHandler(w http.ResponseWriter, r *http.Request) {
+func (db app) GetHandler(w http.ResponseWriter, r *http.Request) {
 	if len(db.Data) == 0 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
@@ -154,10 +154,10 @@ func DecompressRequest(next http.Handler) http.Handler {
 	})
 }
 
-func TimerTrace(next http.Handler) http.Handler {
+func TimeTracer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tStart := time.Now()
-
+		next.ServeHTTP(w, r)
 		tEnd := time.Since(tStart)
 		log.Printf("Duration for a request %s\r\n", tEnd)
 	})
