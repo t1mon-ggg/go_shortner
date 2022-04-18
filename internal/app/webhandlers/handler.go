@@ -269,11 +269,7 @@ func (db *app) checkCookie(cookie *http.Cookie) bool {
 	h := hmac.New(sha256.New, []byte(db.Data[data].Key))
 	h.Write([]byte(data))
 	signed := h.Sum(nil)
-	if hmac.Equal(sign, signed) {
-		return true
-	}
-	return false
-
+	return hmac.Equal(sign, signed)
 }
 
 func (db *app) Cookies(next http.Handler) http.Handler {

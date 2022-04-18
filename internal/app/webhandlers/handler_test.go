@@ -444,6 +444,7 @@ func Test_API2Way(t *testing.T) {
 		query := strings.Split(url, "/")
 		q := fmt.Sprintf("/%s", query[len(query)-1])
 		response, _ = testRequest(t, ts, jar, http.MethodGet, q, "", map[string]string{"Content-Type": "text/plain; charset=utf-8"})
+		defer response.Body.Close()
 		require.Equal(t, http.StatusTemporaryRedirect, response.StatusCode)
 		require.Equal(t, s.URL, response.Header.Get("Location"))
 	})
