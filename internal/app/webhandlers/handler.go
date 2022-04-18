@@ -3,6 +3,9 @@ package webhandlers
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,7 +15,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+
 	"github.com/t1mon-ggg/go_shortner/internal/app/config"
+	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
 	"github.com/t1mon-ggg/go_shortner/internal/app/rand"
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
@@ -20,13 +25,11 @@ import (
 type app struct {
 	Storage storage.FileDB
 	Config  config.OsVars
-	Data    map[string]string
+	Data    helpers.Data
 }
 
-//type WebData map[string]string
-
-func NewData() map[string]string {
-	s := make(map[string]string)
+func NewData() helpers.Data {
+	s := make(helpers.Data)
 	return s
 }
 
@@ -40,9 +43,10 @@ func NewApp() *app {
 
 func (db *app) Router(r chi.Router) {
 	r.Get("/", defaultGetHandler)
-	r.Get("/{^[a-zA-Z]}", db.GetHandler)
+	r.Get("/{^[a-zA-Z]}", db.getHandler)
+	r.Get("/api/user/urls", db.userURLs)
 	r.Post("/", db.postHandler)
-	r.Post("/api/shorten", db.PostAPIHandler)
+	r.Post("/api/shorten", db.postAPIHandler)
 	r.MethodNotAllowed(otherHandler)
 }
 
@@ -54,7 +58,60 @@ func otherHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Bad request", http.StatusBadRequest)
 }
 
+func (db *app) userURLs(w http.ResponseWriter, r *http.Request) {
+	type answer struct {
+		Short    string `json:"short_url"`
+		Original string `json:"original_url"`
+	}
+	var newcookieval string
+	cookie, err := r.Cookie("Client_ID")
+	if err != nil {
+		str := strings.Split(w.Header().Get("Set-Cookie"), "=")
+		newcookieval = str[1]
+	}
+	var value string
+	if len(newcookieval) != 0 {
+		value = newcookieval[:32]
+	} else {
+		value = cookie.Value[:32]
+	}
+	if data, ok := db.Data[value]; ok {
+		if len(data.Short) == 0 {
+			http.Error(w, "No Content", http.StatusNoContent)
+			return
+		}
+		a := make([]answer, 0)
+		for i := range data.Short {
+			a = append(a, answer{Short: fmt.Sprintf("%s/%s", db.Config.BaseURL, i), Original: data.Short[i]})
+		}
+		d, err := json.MarshalIndent(a, "", "\t")
+		if err != nil {
+			http.Error(w, "Json Error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Add("Content-type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(d)
+	} else {
+		http.Error(w, "No Content", http.StatusNoContent)
+		return
+	}
+
+}
+
 func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
+	var newcookieval string
+	cookie, err := r.Cookie("Client_ID")
+	if err != nil {
+		str := strings.Split(w.Header().Get("Set-Cookie"), "=")
+		newcookieval = str[1]
+	}
+	var value string
+	if len(newcookieval) != 0 {
+		value = newcookieval[:32]
+	} else {
+		value = cookie.Value[:32]
+	}
 	defer r.Body.Close()
 	blongURL, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -62,14 +119,28 @@ func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	slongURL := string(blongURL)
 	surl := rand.RandStringRunes(8)
-	(*db).Data[surl] = slongURL
-	rec := map[string]string{surl: slongURL}
-	db.Storage.Write(rec)
+	if entry, ok := db.Data[value]; ok {
+		entry.Short[surl] = slongURL
+		db.Data[value] = entry
+	}
+	db.Storage.Write(db.Data)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("%s/%s", db.Config.BaseURL, surl)))
 }
 
-func (db *app) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
+func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
+	var newcookieval string
+	cookie, err := r.Cookie("Client_ID")
+	if err != nil {
+		str := strings.Split(w.Header().Get("Set-Cookie"), "=")
+		newcookieval = str[1]
+	}
+	var value string
+	if len(newcookieval) != 0 {
+		value = newcookieval[:32]
+	} else {
+		value = cookie.Value[:32]
+	}
 	type sURL struct {
 		ShortURL string `json:"result"`
 	}
@@ -96,9 +167,11 @@ func (db *app) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	short := rand.RandStringRunes(8)
-	(*db).Data[short] = longURL.LongURL
-	rec := map[string]string{short: longURL.LongURL}
-	db.Storage.Write(rec)
+	if entry, ok := db.Data[value]; ok {
+		entry.Short[short] = longURL.LongURL
+		db.Data[value] = entry
+	}
+	db.Storage.Write(db.Data)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	jbody := sURL{ShortURL: fmt.Sprintf("%s/%s", (*db).Config.BaseURL, short)}
@@ -111,25 +184,27 @@ func (db *app) PostAPIHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(abody)
 }
 
-func (db app) GetHandler(w http.ResponseWriter, r *http.Request) {
-	if len(db.Data) == 0 {
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
+func (db app) getHandler(w http.ResponseWriter, r *http.Request) {
 	p := r.RequestURI
 	p = p[1:]
-	if _, ok := db.Data[p]; !ok {
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
 	if len(p) != 8 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	lurl := db.Data[p]
-	w.Header().Set("Location", lurl)
-	w.WriteHeader(http.StatusTemporaryRedirect)
-	w.Write([]byte{})
+	var count int
+	for _, entry := range db.Data {
+		if url, ok := entry.Short[p]; ok {
+			w.Header().Set("Location", url)
+			w.WriteHeader(http.StatusTemporaryRedirect)
+			w.Write([]byte{})
+			count++
+		}
+	}
+	if count == 0 {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
 }
 
 func DecompressRequest(next http.Handler) http.Handler {
@@ -160,5 +235,62 @@ func TimeTracer(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 		tEnd := time.Since(tStart)
 		log.Printf("Duration for a request %s\r\n", tEnd)
+	})
+}
+
+func (db *app) addCookie(w http.ResponseWriter, name, value string, key []byte) {
+	h := hmac.New(sha256.New, key)
+	h.Write([]byte(value))
+	signed := h.Sum(nil)
+	sign := hex.EncodeToString(signed)
+	cookie := http.Cookie{
+		Name:   name,
+		Value:  value + sign,
+		MaxAge: 0,
+	}
+	if entry, ok := db.Data[value]; ok {
+		entry.Key = string(key)
+		db.Data[value] = entry
+	} else {
+		var entry helpers.WebData
+		entry.Key = string(key)
+		entry.Short = make(map[string]string)
+		db.Data[value] = entry
+	}
+	http.SetCookie(w, &cookie)
+}
+func (db *app) checkCookie(cookie *http.Cookie) bool {
+	data := cookie.Value[:32]
+	signstring := cookie.Value[32:]
+	sign, err := hex.DecodeString(signstring)
+	if err != nil {
+		log.Println(err)
+	}
+	h := hmac.New(sha256.New, []byte(db.Data[data].Key))
+	h.Write([]byte(data))
+	signed := h.Sum(nil)
+	if hmac.Equal(sign, signed) {
+		return true
+	}
+	return false
+
+}
+
+func (db *app) Cookies(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("Client_ID")
+		if err != nil {
+			log.Println(err)
+			value := rand.RandStringRunes(32)
+			key := rand.RandStringRunes(64)
+			db.addCookie(w, "Client_ID", value, []byte(key))
+		} else {
+			if !db.checkCookie(cookie) {
+				value := rand.RandStringRunes(32)
+				key := rand.RandStringRunes(64)
+				db.addCookie(w, "Client_ID", value, []byte(key))
+			}
+		}
+		next.ServeHTTP(w, r)
 	})
 }

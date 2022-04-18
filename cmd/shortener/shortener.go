@@ -32,6 +32,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(webhandlers.DecompressRequest)
+	r.Use(AppData.Cookies)
 
 	r.Route("/", AppData.Router)
 
