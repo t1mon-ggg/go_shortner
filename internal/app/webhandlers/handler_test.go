@@ -90,112 +90,6 @@ func testRequest(t *testing.T, ts *httptest.Server, jar *cookiejar.Jar, method, 
 	return resp, string(respBody)
 }
 
-// 		{
-// 			name: "Unshort compressed",
-// 			request: request{
-// 				method: http.MethodGet,
-// 				query:  "/ABCDabcd",
-// 				body:   "http://example.org",
-// 				rtype:  "GetLong",
-// 				ctype: map[string]string{
-// 					"Content-Type":    "text/plain; charset=utf-8",
-// 					"Accept-Encoding": "gzip, deflate, br",
-// 				},
-// 			},
-// 			want: want{
-// 				statusCode: 307,
-// 				data:       "http://example.org",
-// 			},
-// 		},
-// 		{
-// 			name: "Create api short url test with compress",
-// 			request: request{
-// 				method: http.MethodPost,
-// 				query:  "/api/shorten",
-// 				body:   `{"url":"http://fghjt.ru"}`,
-// 				rtype:  "APIShortCompressRequest",
-// 				ctype: map[string]string{
-// 					"Content-Type":     "application/json",
-// 					"Content-Encoding": "gzip",
-// 				},
-// 			},
-// 			want: want{
-// 				statusCode: 201,
-// 				data:       `{"result":\"http:\/\/\w+\.\w+\.\w\.\w:\d+\/\w{8}\"}`,
-// 			},
-// 		},
-// 	}
-
-// 			case "CreateShort":
-// 				require.Equal(t, tt.want.statusCode, response.StatusCode)
-// 				matched, err := regexp.Match(tt.want.data, []byte(body))
-// 				if err != nil {
-// 					t.Fatal("Regexp error")
-// 				}
-// 				assert.Equal(t, true, matched)
-// 			case "GetLong":
-// 				require.Equal(t, tt.want.statusCode, response.StatusCode)
-// 				if tt.want.statusCode != 400 {
-// 					header := response.Header.Get("Location")
-// 					require.Equal(t, tt.want.data, header)
-// 				}
-// 			case "2-Way":
-// 				rex := regexp.MustCompile(`\w{8}`)
-// 				short := "/" + rex.FindString(body)
-// 				step2, _ := testRequest(t, ts, http.MethodGet, short, "", tt.request.ctype)
-// 				defer step2.Body.Close()
-// 				assert.Equal(t, tt.want.statusCode, step2.StatusCode)
-// 				if tt.want.statusCode != 400 {
-// 					header := step2.Header.Get("Location")
-// 					require.Equal(t, tt.want.data, header)
-// 				}
-// 			case "APIShort":
-// 				require.Equal(t, tt.want.statusCode, response.StatusCode)
-// 				require.Equal(t, "application/json", response.Header.Get("Content-Type"))
-// 				matched, err := regexp.Match(tt.want.data, []byte(body))
-// 				if err != nil {
-// 					t.Fatal("Regexp error")
-// 				}
-// 				assert.Equal(t, true, matched)
-// 			case "APIShort 2-Way":
-// 				type sURL struct {
-// 					ShortURL string `json:"result"`
-// 				}
-// 				rex := regexp.MustCompile(`{"result":\"http:\/\/\w+\.\w+\.\w\.\w:\d+\/\w{8}\"}`)
-// 				url := sURL{}
-// 				err := json.Unmarshal([]byte(rex.FindString(body)), &url)
-// 				require.NoError(t, err)
-// 				rex = regexp.MustCompile(`\w{8}`)
-// 				short := "/" + rex.FindString(url.ShortURL)
-// 				step2, _ := testRequest(t, ts, http.MethodGet, short, "", map[string]string{"Content-Type": "text/plain; charset=utf-8"})
-// 				defer step2.Body.Close()
-// 				assert.Equal(t, tt.want.statusCode, step2.StatusCode)
-// 				if tt.want.statusCode != 400 {
-// 					header := step2.Header.Get("Location")
-// 					require.Equal(t, tt.want.data, header)
-// 				}
-// 			case "APIShortCompress":
-// 				require.Equal(t, tt.want.statusCode, response.StatusCode)
-// 				require.Equal(t, "application/json", response.Header.Get("Content-Type"))
-// 				require.NotEmpty(t, response.Header.Get("Content-Encoding"))
-// 				rdata := strings.NewReader(body)
-// 				r, _ := gzip.NewReader(rdata)
-// 				s, _ := io.ReadAll(r)
-// 				matched, err := regexp.Match(tt.want.data, []byte(s))
-// 				if err != nil {
-// 					t.Fatal("Regexp error")
-// 				}
-// 				assert.Equal(t, true, matched)
-// 			case "APIShortCompressRequest":
-// 				require.Equal(t, tt.want.statusCode, response.StatusCode)
-// 				r := strings.NewReader(body)
-// 				s, _ := io.ReadAll(r)
-// 				matched, err := regexp.Match(tt.want.data, []byte(s))
-// 				if err != nil {
-// 					t.Fatal("Regexp error")
-// 				}
-// 				assert.Equal(t, true, matched)
-
 //Test_defaultGetHandler - тестирование корневого хендлера
 func Test_defaultGetHandler(t *testing.T) {
 	jar, err := cookiejar.New(nil)
@@ -489,9 +383,9 @@ func Test_APIShort(t *testing.T) {
 			"Content-Type": "application/json",
 		}
 		type req struct {
-			Url string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` //{"url":"<some_url>"}
 		}
-		s := req{Url: "http://example.org"}
+		s := req{URL: "http://example.org"}
 		b, err := json.Marshal(s)
 		require.NoError(t, err)
 		response, body := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
@@ -531,12 +425,12 @@ func Test_API2Way(t *testing.T) {
 			"Content-Type": "application/json",
 		}
 		type req struct {
-			Url string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` //{"url":"<some_url>"}
 		}
 		type answer struct {
 			A string `json:"result"` //{"result":"<short_url>"}
 		}
-		s := req{Url: "http://example.org"}
+		s := req{URL: "http://example.org"}
 		b, err := json.Marshal(s)
 		require.NoError(t, err)
 		response, body := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
@@ -549,9 +443,9 @@ func Test_API2Way(t *testing.T) {
 		url := ss.A
 		query := strings.Split(url, "/")
 		q := fmt.Sprintf("/%s", query[len(query)-1])
-		response, body = testRequest(t, ts, jar, http.MethodGet, q, "", map[string]string{"Content-Type": "text/plain; charset=utf-8"})
+		response, _ = testRequest(t, ts, jar, http.MethodGet, q, "", map[string]string{"Content-Type": "text/plain; charset=utf-8"})
 		require.Equal(t, http.StatusTemporaryRedirect, response.StatusCode)
-		require.Equal(t, s.Url, response.Header.Get("Location"))
+		require.Equal(t, s.URL, response.Header.Get("Location"))
 	})
 	err = os.Remove(db.Storage.Name)
 	require.NoError(t, err)
@@ -585,9 +479,9 @@ func Test_ZippedRequest(t *testing.T) {
 			"Content-Encoding": "gzip",
 		}
 		type req struct {
-			Url string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` //{"url":"<some_url>"}
 		}
-		s := req{Url: "http://example.org"}
+		s := req{URL: "http://example.org"}
 		b, err := json.Marshal(s)
 		require.NoError(t, err)
 		response, body := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
@@ -626,9 +520,9 @@ func Test_ZippedAnswer(t *testing.T) {
 			"Accept-Encoding": "gzip",
 		}
 		type req struct {
-			Url string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` //{"url":"<some_url>"}
 		}
-		s := req{Url: "http://example.org"}
+		s := req{URL: "http://example.org"}
 		b, err := json.Marshal(s)
 		require.NoError(t, err)
 		response, body := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
@@ -671,9 +565,9 @@ func Test_2WayZip(t *testing.T) {
 			"Content-Encoding": "gzip",
 		}
 		type req struct {
-			Url string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` //{"url":"<some_url>"}
 		}
-		s := req{Url: "http://example.org"}
+		s := req{URL: "http://example.org"}
 		b, err := json.Marshal(s)
 		require.NoError(t, err)
 		response, body := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
