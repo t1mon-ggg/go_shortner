@@ -44,9 +44,9 @@ func NewApp() *app {
 
 func (db *app) Router(r chi.Router) {
 	r.Get("/", defaultGetHandler)
+	r.Get("/ping", db.ConnectionTest)
 	r.Get("/{^[a-zA-Z]}", db.getHandler)
 	r.Get("/api/user/urls", db.userURLs)
-	r.Get("/ping", db.ConnectionTest)
 	r.Post("/", db.postHandler)
 	r.Post("/api/shorten", db.postAPIHandler)
 	r.MethodNotAllowed(otherHandler)
