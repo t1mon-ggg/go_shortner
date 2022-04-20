@@ -72,17 +72,14 @@ func (db *app) Router(r chi.Router) {
 }
 
 func defaultGetHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("DEBUG:", "Default Get handler")
 	http.Error(w, "Empty request", http.StatusBadRequest)
 }
 
 func otherHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("DEBUG:", "Other handler")
 	http.Error(w, "Bad request", http.StatusBadRequest)
 }
 
 func (db *app) ConnectionTest(w http.ResponseWriter, r *http.Request) {
-	log.Println("DEBUG:", "Check storage connection")
 	err := db.Storage.Ping()
 	if err != nil {
 		http.Error(w, "Storage connection failed", http.StatusInternalServerError)
@@ -93,7 +90,6 @@ func (db *app) ConnectionTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *app) userURLs(w http.ResponseWriter, r *http.Request) {
-	log.Println("DEBUG:", "userURLs handler")
 	type answer struct {
 		Short    string `json:"short_url"`
 		Original string `json:"original_url"`
@@ -124,7 +120,6 @@ func (db *app) userURLs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("DEBUG:", "Post handler")
 	value := idCookieValue(w, r)
 	defer r.Body.Close()
 	blongURL, err := io.ReadAll(r.Body)
@@ -143,7 +138,6 @@ func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("DEBUG:", "Post api handler")
 	value := idCookieValue(w, r)
 	type sURL struct {
 		ShortURL string `json:"result"`
@@ -189,7 +183,6 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db app) getHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("DEBUG:", "Get handler")
 	p := r.RequestURI
 	log.Println("Request uri:", p)
 	p = p[1:]
@@ -253,7 +246,6 @@ func TimeTracer(next http.Handler) http.Handler {
 }
 
 func (db *app) addCookie(w http.ResponseWriter, name, value string, key []byte) {
-	log.Println("DEBUG:", "add cookie function")
 	h := hmac.New(sha256.New, key)
 	h.Write([]byte(value))
 	signed := h.Sum(nil)
@@ -275,7 +267,6 @@ func (db *app) addCookie(w http.ResponseWriter, name, value string, key []byte) 
 	http.SetCookie(w, &cookie)
 }
 func (db *app) checkCookie(cookie *http.Cookie) bool {
-	log.Println("DEBUG:", "Check cookie function")
 	data := cookie.Value[:32]
 	signstring := cookie.Value[32:]
 	sign, err := hex.DecodeString(signstring)
@@ -289,13 +280,13 @@ func (db *app) checkCookie(cookie *http.Cookie) bool {
 }
 
 func (db *app) Cookies(next http.Handler) http.Handler {
-	log.Println("DEBUG:", "Cookie middleware")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("Client_ID")
 		if err != nil {
 			log.Println(err)
 			value := rand.RandStringRunes(32)
 			key := rand.RandStringRunes(64)
+			log.Println("add cookie")
 			db.addCookie(w, "Client_ID", value, []byte(key))
 		} else {
 			if !db.checkCookie(cookie) {
@@ -314,5 +305,5 @@ func (db *app) MyMiddlewares(r *chi.Mux) {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(DecompressRequest)
-	// r.Use(db.Cookies)
+	r.Use(db.Cookies)
 }

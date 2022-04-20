@@ -21,6 +21,7 @@ import (
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/config"
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
+	"github.com/t1mon-ggg/go_shortner/internal/app/rand"
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
 
@@ -468,6 +469,21 @@ func Test_FileUserURLs(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Wrong cookie",
+			args: arg{
+				method: http.MethodGet,
+				query:  "/",
+				body:   "",
+				ctype: map[string]string{
+					"Content-Type": "text/plain; charset=utf-8",
+				},
+				want: wanted{
+					statusCode: 0,
+					body:       "",
+				},
+			},
+		},
 	}
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
@@ -476,7 +492,7 @@ func Test_FileUserURLs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			switch tt.name {
 			case "Not existent cookie":
-				response, _ := testRequest(t, ts, jar, http.MethodGet, "/api/user/urls", "", tt.args.ctype)
+				response, _ := testRequest(t, ts, jar, http.MethodGet, tt.args.query, "", tt.args.ctype)
 				defer response.Body.Close()
 				assert.Equal(t, http.StatusNoContent, response.StatusCode)
 				jar, _ = cookiejar.New(nil)
@@ -489,7 +505,7 @@ func Test_FileUserURLs(t *testing.T) {
 					"Content-Type": "text/plain; charset=utf-8"})
 				defer response.Body.Close()
 				assert.Equal(t, http.StatusCreated, response.StatusCode)
-				response, body := testRequest(t, ts, jar, http.MethodGet, "/api/user/urls", tt.args.body, tt.args.ctype)
+				response, body := testRequest(t, ts, jar, http.MethodGet, tt.args.query, tt.args.body, tt.args.ctype)
 				defer response.Body.Close()
 				assert.Equal(t, "application/json", response.Header.Get("Content-Type"))
 				assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -500,6 +516,26 @@ func Test_FileUserURLs(t *testing.T) {
 				d := make([]answer, 0)
 				err := json.Unmarshal([]byte(body), &d)
 				require.NoError(t, err)
+			case "Wrong cookie":
+				response, _ := testRequest(t, ts, jar, http.MethodPost, tt.args.query, "http://example3.org", tt.args.ctype)
+				defer response.Body.Close()
+				cookies := jar.Cookies(response.Request.URL)
+				var cvalues []string
+				cvalues = make([]string, 0)
+				for _, c := range cookies {
+					cvalues = append(cvalues, c.Value)
+					c.Value = rand.RandStringRunes(96)
+				}
+				response, _ = testRequest(t, ts, jar, http.MethodGet, tt.args.query, "", tt.args.ctype)
+				defer response.Body.Close()
+				cookies = jar.Cookies(response.Request.URL)
+				var mvalues []string
+				mvalues = make([]string, 0)
+				for _, m := range cookies {
+					mvalues = append(cvalues, m.Value)
+				}
+				require.NotEqual(t, cvalues, mvalues)
+
 			}
 		})
 	}
