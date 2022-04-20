@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -61,10 +62,9 @@ func NewApp() *app {
 }
 
 func (db *app) Router(r chi.Router) {
-	//r.Get("/", defaultGetHandler)
-	r.Get("/", db.getHandler)
+	r.Get("/", defaultGetHandler)
 	r.Get("/ping", db.ConnectionTest)
-	//r.Get("/{^[a-zA-Z]}", db.getHandler)
+	r.Get("/{^[a-zA-Z]}", db.getHandler)
 	r.Get("/api/user/urls", db.userURLs)
 	r.Post("/", db.postHandler)
 	r.Post("/api/shorten", db.postAPIHandler)
@@ -189,10 +189,17 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db app) getHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("DEBUG:", "Regexp Get handler")
+	log.Println("DEBUG:", "Get handler")
 	p := r.RequestURI
+	log.Println("Request uri:", p)
 	p = p[1:]
-	if len(p) != 8 {
+	matched, err := regexp.Match(`\w{8}`, []byte(p))
+	if err != nil {
+		http.Error(w, "URI process error", http.StatusInternalServerError)
+		return
+	}
+	log.Println(p, matched)
+	if !matched || len(p) > 8 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -27,11 +26,8 @@ import (
 
 func newFileServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *app) {
 	jar, err := cookiejar.New(nil)
-	if err != nil {
-		log.Println(err)
-	}
-	db := NewApp()
 	require.NoError(t, err)
+	db := NewApp()
 	db.Storage = storage.NewFileDB("./createme.txt")
 	db.Config = config.NewConfig()
 	db.Data = make(helpers.Data)
@@ -105,7 +101,7 @@ func testRequest(t *testing.T, ts *httptest.Server, jar *cookiejar.Jar, method, 
 	return resp, string(respBody)
 }
 
-//Test_defaultGetHandler - тестирование корневого хендлера
+// Test_defaultGetHandler - тестирование корневого хендлера
 func Test_FiledefaultGetHandler(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
@@ -244,7 +240,6 @@ func Test_FileUnshortStatic(t *testing.T) {
 	jar, r, db := newFileServer(t)
 	db.Data["cookie1"] = helpers.WebData{Key: "secret_key", Short: map[string]string{"abcdABCD": "http://example.org"}}
 	db.Storage.Write(db.Data)
-	log.Println(db)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	for _, tt := range tests {
@@ -512,7 +507,7 @@ func Test_FileUserURLs(t *testing.T) {
 	require.NoError(t, err)
 }
 
-//Test_Ping - тестиирование получения всех ссылок пользователя
+//Test_Ping - тестирование фалового хранилища
 func Test_FilePing(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
