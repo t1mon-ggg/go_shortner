@@ -17,10 +17,10 @@ type FileDB struct {
 
 //NewFileDB - функция инициализирующая структура FileDB
 func NewFileDB(name string) *FileDB {
-	s := &FileDB{}
+	s := FileDB{}
 	s.Name = name
 	s.file = nil
-	return s
+	return &s
 }
 
 //checkFile - функция проверки существования файла и его создания

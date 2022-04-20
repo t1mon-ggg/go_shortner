@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 	"github.com/t1mon-ggg/go_shortner/internal/app/webhandlers"
 )
 
@@ -17,13 +16,9 @@ func main() {
 		log.Println(err)
 	}
 	AppData.Config.ReadCli()
-	if AppData.Config.Database != "" {
-		AppData.Storage, err = storage.NewDB(AppData.Config.Database)
-		if err != nil {
-			log.Println(err)
-		}
-	} else {
-		AppData.Storage = storage.NewFileDB(AppData.Config.FileStoragePath)
+	AppData.Storage, err = AppData.Config.SetStorage()
+	if err != nil {
+		log.Fatal(err)
 	}
 	AppData.Data, err = AppData.Storage.Read()
 	if err != nil {
@@ -40,8 +35,6 @@ func main() {
 	r.Use(AppData.Cookies)
 
 	r.Route("/", AppData.Router)
-
-	log.Println("Current config", *AppData.Config)
 
 	http.ListenAndServe(AppData.Config.ServerAddress, r)
 

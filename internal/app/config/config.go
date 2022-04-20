@@ -2,8 +2,11 @@ package config
 
 import (
 	"flag"
+	"fmt"
+	"log"
 
 	"github.com/caarlos0/env"
+	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
 
 type Vars struct {
@@ -41,6 +44,8 @@ func (cfg *Vars) ReadEnv() error {
 	if c.Database != "" {
 		cfg.Database = c.Database
 	}
+	parsed := fmt.Sprintf("Evironment parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database)
+	log.Println(parsed)
 	return nil
 }
 
@@ -63,7 +68,21 @@ func (cfg *Vars) ReadCli() {
 	if isFlagPassed("d") {
 		cfg.Database = *dbpathptr
 	}
+	parsed := fmt.Sprintf("Flags parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\n", *baseurlptr, *srvaddrptr, *fpathptr, *dbpathptr)
+	log.Println(parsed)
 
+}
+
+func (cfg *Vars) SetStorage() (storage.Database, error) {
+	if cfg.Database != "" {
+		db, err := storage.NewDB(cfg.Database)
+		if err != nil {
+			return nil, err
+		}
+		return db, nil
+	}
+	db := storage.NewFileDB(cfg.FileStoragePath)
+	return db, nil
 }
 
 func isFlagPassed(name string) bool {

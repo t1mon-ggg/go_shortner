@@ -8,7 +8,6 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
-
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
 )
 
@@ -54,8 +53,7 @@ func (database *Postgresql) Ping() error {
 
 //Close - закрытие дексриптора базы данных
 func (database *Postgresql) Close() error {
-	var err error
-	err = database.db.Close()
+	err := database.db.Close()
 	if err != nil {
 		return err
 	}
@@ -64,15 +62,10 @@ func (database *Postgresql) Close() error {
 
 //Read - чтение из базы данных
 func (database *Postgresql) Read() (helpers.Data, error) {
-	var a helpers.Data
-	var b error
-	a, b = nil, nil
-	return a, b
+	return nil, nil
 }
 
 //Write - запись в базы данных
 func (database *Postgresql) Write(data helpers.Data) error {
-	var a error
-	a = nil
-	return a
+	return nil
 }
