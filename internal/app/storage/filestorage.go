@@ -37,16 +37,25 @@ func checkFile(filename string) error {
 }
 
 func (f *FileDB) Ping() error {
-	file, err := os.OpenFile(f.Name, os.O_RDONLY, 0777)
+	var err error
+	f.file, err = os.OpenFile(f.Name, os.O_RDONLY, 0777)
 	if err != nil {
 		return err
 	}
-	file.Close()
-	file, err = os.OpenFile(f.Name, os.O_WRONLY, 0777)
+	err = f.file.Close()
 	if err != nil {
 		return err
 	}
-	file.Close()
+	f.file = nil
+	f.file, err = os.OpenFile(f.Name, os.O_WRONLY, 0777)
+	if err != nil {
+		return err
+	}
+	err = f.file.Close()
+	if err != nil {
+		return err
+	}
+	f.file = nil
 	return nil
 }
 

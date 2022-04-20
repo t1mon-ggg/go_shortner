@@ -25,16 +25,6 @@ func NewDB(address string) (*Postgresql, error) {
 		return nil, err
 	}
 	return &db, nil
-} //Ping - проверка состояния соединения с базой данных
-func (database *Postgresql) Ping() error {
-	ctx := context.Background()
-	connection, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	err := database.db.PingContext(connection)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (database *Postgresql) open() error {
@@ -50,6 +40,19 @@ func (database *Postgresql) open() error {
 	return nil
 }
 
+//Ping - проверка состояния соединения с базой данных
+func (database *Postgresql) Ping() error {
+	ctx := context.Background()
+	connection, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	err := database.db.PingContext(connection)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//Close - закрытие дексриптора базы данных
 func (database *Postgresql) Close() error {
 	var err error
 	err = database.db.Close()
@@ -59,10 +62,12 @@ func (database *Postgresql) Close() error {
 	return nil
 }
 
+//Read - чтение из базы данных
 func (database *Postgresql) Read() (helpers.Data, error) {
 	return nil, nil
 }
 
+//Write - запись в базы данных
 func (database *Postgresql) Write(data helpers.Data) error {
 	return nil
 }

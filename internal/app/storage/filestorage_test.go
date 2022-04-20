@@ -10,9 +10,14 @@ import (
 )
 
 func Test_Ping(t *testing.T) {
+	var err error
 	f := FileDB{}
 	f.Name = "createme.txt"
-	err := f.Ping()
+	f.file, err = os.Create("createme.txt")
+	require.NoError(t, err)
+	f.Close()
+	f.file = nil
+	err = f.Ping()
 	require.NoError(t, err)
 	err = os.Remove(f.Name)
 	require.NoError(t, err)
