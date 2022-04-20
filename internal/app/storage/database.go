@@ -38,13 +38,16 @@ func (database *Postgresql) open() error {
 
 //Ping - проверка состояния соединения с базой данных
 func (database *Postgresql) Ping() error {
+	log.Println("Check connection to PostgreSQL")
 	ctx := context.Background()
-	connection, cancel := context.WithTimeout(ctx, 3*time.Second)
+	connection, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	err := database.db.PingContext(connection)
 	if err != nil {
+		log.Println("Connection to PostgreSQL failed")
 		return err
 	}
+	log.Println("Connection to PostgreSQL confirmed")
 	return nil
 }
 

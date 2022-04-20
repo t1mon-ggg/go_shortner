@@ -39,25 +39,31 @@ func checkFile(filename string) error {
 }
 
 func (f *FileDB) Ping() error {
+	log.Println("Check connection to files storage")
 	var err error
 	f.file, err = os.OpenFile(f.Name, os.O_RDONLY, 0777)
 	if err != nil {
+		log.Println("File storage failed on opening file for read")
 		return err
 	}
 	err = f.file.Close()
 	if err != nil {
+		log.Println("File storage failed on closing file after read")
 		return err
 	}
 	f.file = nil
 	f.file, err = os.OpenFile(f.Name, os.O_WRONLY, 0777)
 	if err != nil {
+		log.Println("File storage failed on opening file for write")
 		return err
 	}
 	err = f.file.Close()
 	if err != nil {
+		log.Println("File storage failed on closing file after write")
 		return err
 	}
 	f.file = nil
+	log.Println("Connection to file storage confirmed")
 	return nil
 }
 
