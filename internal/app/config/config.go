@@ -75,7 +75,7 @@ func (cfg *Vars) ReadCli() {
 
 func (cfg *Vars) SetStorage() (storage.Database, error) {
 	if cfg.Database != "" {
-		db, err := storage.NewDB(cfg.Database)
+		db, err := storage.NewPostgreSQL(cfg.Database)
 		if err != nil {
 			return nil, err
 		}

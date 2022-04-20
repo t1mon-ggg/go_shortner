@@ -15,8 +15,8 @@ type Postgresql struct {
 	db   *sql.DB //дескриптор для работы с базой
 }
 
-//NewDB - создание ссыылки на структуру для работы с базой данных
-func NewDB(conn string) (*Postgresql, error) {
+//NewPostgreSQL - создание ссыылки на структуру для работы с базой данных
+func NewPostgreSQL(conn string) (*Postgresql, error) {
 	db := Postgresql{Conn: conn}
 	err := db.open()
 	if err != nil {
