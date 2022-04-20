@@ -22,6 +22,23 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
 
+func idCookieValue(w http.ResponseWriter, r *http.Request) string {
+	var newcookieval string
+	cookie, err := r.Cookie("Client_ID")
+	var value string
+	if err != nil {
+		str := strings.Split(w.Header().Get("Set-Cookie"), "=")
+		newcookieval = str[1]
+		value = newcookieval[:32]
+		return value
+	}
+	if len(cookie.Value) == 96 {
+		value = cookie.Value[:32]
+		return value
+	}
+	return ""
+}
+
 type app struct {
 	Storage storage.Database
 	Config  *config.Vars
@@ -76,18 +93,7 @@ func (db *app) userURLs(w http.ResponseWriter, r *http.Request) {
 		Short    string `json:"short_url"`
 		Original string `json:"original_url"`
 	}
-	var newcookieval string
-	cookie, err := r.Cookie("Client_ID")
-	if err != nil {
-		str := strings.Split(w.Header().Get("Set-Cookie"), "=")
-		newcookieval = str[1]
-	}
-	var value string
-	if len(newcookieval) != 0 {
-		value = newcookieval[:32]
-	} else {
-		value = cookie.Value[:32]
-	}
+	value := idCookieValue(w, r)
 	if data, ok := db.Data[value]; ok {
 		if len(data.Short) == 0 {
 			http.Error(w, "No Content", http.StatusNoContent)
@@ -113,18 +119,7 @@ func (db *app) userURLs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
-	var newcookieval string
-	cookie, err := r.Cookie("Client_ID")
-	if err != nil {
-		str := strings.Split(w.Header().Get("Set-Cookie"), "=")
-		newcookieval = str[1]
-	}
-	var value string
-	if len(newcookieval) != 0 {
-		value = newcookieval[:32]
-	} else {
-		value = cookie.Value[:32]
-	}
+	value := idCookieValue(w, r)
 	defer r.Body.Close()
 	blongURL, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -142,18 +137,7 @@ func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
-	var newcookieval string
-	cookie, err := r.Cookie("Client_ID")
-	if err != nil {
-		str := strings.Split(w.Header().Get("Set-Cookie"), "=")
-		newcookieval = str[1]
-	}
-	var value string
-	if len(newcookieval) != 0 {
-		value = newcookieval[:32]
-	} else {
-		value = cookie.Value[:32]
-	}
+	value := idCookieValue(w, r)
 	type sURL struct {
 		ShortURL string `json:"result"`
 	}
