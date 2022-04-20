@@ -271,11 +271,13 @@ func (db *app) checkCookie(cookie *http.Cookie) bool {
 func (db *app) Cookies(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookies := r.Cookies()
-		log.Println(cookies)
+		log.Println("!!!!!!!!!!!!!!!!!!!", "Cookies", cookies)
 		if len(cookies) != 0 {
+			log.Println("!!!!!!!!!!!!!!!!!!!", "len != 0", cookies)
 			found := false
 			for _, cookie := range cookies {
 				if cookie.Name == "Client_ID" {
+					log.Println("!!!!!!!!!!!!!!!!!!!", "Client_ID found", cookie)
 					if !db.checkCookie(cookie) {
 						value := rand.RandStringRunes(32)
 						key := rand.RandStringRunes(64)
@@ -291,6 +293,7 @@ func (db *app) Cookies(next http.Handler) http.Handler {
 				db.addCookie(w, "Client_ID", value, key)
 			}
 		} else {
+			log.Println("!!!!!!!!!!!!!!!!!!!", "len == 0", cookies)
 			value := rand.RandStringRunes(32)
 			key := rand.RandStringRunes(64)
 			db.addCookie(w, "Client_ID", value, key)
