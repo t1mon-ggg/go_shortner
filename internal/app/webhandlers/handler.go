@@ -24,23 +24,6 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
 
-func idCookieValue(w http.ResponseWriter, r *http.Request) string {
-	var newcookieval string
-	cookie, err := r.Cookie("Client_ID")
-	var value string
-	if err != nil {
-		str := strings.Split(w.Header().Get("Set-Cookie"), "=")
-		newcookieval = str[1]
-		value = newcookieval[:32]
-		return value
-	}
-	if len(cookie.Value) == 96 {
-		value = cookie.Value[:32]
-		return value
-	}
-	return ""
-}
-
 type app struct {
 	Storage storage.Database
 	Config  *config.Vars
@@ -132,7 +115,11 @@ func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
 		entry.Short[surl] = slongURL
 		db.Data[value] = entry
 	}
-	db.Storage.Write(db.Data)
+	err = db.Storage.Write(db.Data)
+	if err != nil {
+		http.Error(w, "Storage error", http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("%s/%s", db.Config.BaseURL, surl)))
 }
@@ -169,7 +156,11 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 		entry.Short[short] = longURL.LongURL
 		db.Data[value] = entry
 	}
-	db.Storage.Write(db.Data)
+	err = db.Storage.Write(db.Data)
+	if err != nil {
+		http.Error(w, "Storage error", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	jbody := sURL{ShortURL: fmt.Sprintf("%s/%s", (*db).Config.BaseURL, short)}
@@ -184,14 +175,12 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 
 func (db app) getHandler(w http.ResponseWriter, r *http.Request) {
 	p := r.RequestURI
-	log.Println("Request uri:", p)
 	p = p[1:]
 	matched, err := regexp.Match(`\w{8}`, []byte(p))
 	if err != nil {
 		http.Error(w, "URI process error", http.StatusInternalServerError)
 		return
 	}
-	log.Println(p, matched)
 	if !matched || len(p) > 8 {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
@@ -245,8 +234,8 @@ func TimeTracer(next http.Handler) http.Handler {
 	})
 }
 
-func (db *app) addCookie(w http.ResponseWriter, name, value string, key []byte) {
-	h := hmac.New(sha256.New, key)
+func (db *app) addCookie(w http.ResponseWriter, name, value string, key string) {
+	h := hmac.New(sha256.New, []byte(key))
 	h.Write([]byte(value))
 	signed := h.Sum(nil)
 	sign := hex.EncodeToString(signed)
@@ -281,20 +270,28 @@ func (db *app) checkCookie(cookie *http.Cookie) bool {
 
 func (db *app) Cookies(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("Client_ID")
-		if err != nil {
-			log.Println(err)
+		cookies := r.Cookies()
+		if len(cookies) != 0 {
+			found := false
+			for _, cookie := range cookies {
+				if cookie.Name == "Client_ID" {
+					found = true
+					if !db.checkCookie(cookie) {
+						value := rand.RandStringRunes(32)
+						key := rand.RandStringRunes(64)
+						db.addCookie(w, "Client_ID", value, key)
+					}
+				}
+			}
+			if !found {
+				value := rand.RandStringRunes(32)
+				key := rand.RandStringRunes(64)
+				db.addCookie(w, "Client_ID", value, key)
+			}
+		} else {
 			value := rand.RandStringRunes(32)
 			key := rand.RandStringRunes(64)
-			log.Println("add cookie")
-			db.addCookie(w, "Client_ID", value, []byte(key))
-		} else {
-			// if !db.checkCookie(cookie) {
-			// 	value := rand.RandStringRunes(32)
-			// 	key := rand.RandStringRunes(64)
-			// 	db.addCookie(w, "Client_ID", value, []byte(key))
-			// }
-			log.Println(cookie)
+			db.addCookie(w, "Client_ID", value, key)
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -307,4 +304,31 @@ func (db *app) MyMiddlewares(r *chi.Mux) {
 	r.Use(middleware.Recoverer)
 	r.Use(DecompressRequest)
 	r.Use(db.Cookies)
+}
+
+func idCookieValue(w http.ResponseWriter, r *http.Request) string {
+	var newcookieval string
+	var value string
+	cookies := r.Cookies()
+	if len(cookies) == 0 {
+		str := strings.Split(w.Header().Get("Set-Cookie"), "=")
+		if len(str) == 2 {
+			newcookieval = str[1]
+			if len(newcookieval) == 96 {
+				value = newcookieval[:32]
+				return value
+			}
+		}
+		return ""
+	} else {
+		for _, cookie := range cookies {
+			if cookie.Name == "Client_ID" {
+				if len(cookie.Value) == 96 {
+					value = cookie.Value[:32]
+					return value
+				}
+			}
+		}
+	}
+	return ""
 }

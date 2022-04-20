@@ -16,7 +16,6 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/config"
@@ -32,6 +31,8 @@ func newFileServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *app) {
 	db.Storage = storage.NewFileDB("./createme.txt")
 	db.Config = config.NewConfig()
 	db.Data = make(helpers.Data)
+	db.Data, err = db.Storage.Read()
+	require.NoError(t, err)
 	r := chi.NewRouter()
 	db.MyMiddlewares(r)
 	r.Route("/", db.Router)
@@ -103,7 +104,7 @@ func testRequest(t *testing.T, ts *httptest.Server, jar *cookiejar.Jar, method, 
 }
 
 // Test_defaultGetHandler - тестирование корневого хендлера
-func Test_FiledefaultGetHandler(t *testing.T) {
+func Test_File_defaultGetHandler(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -113,12 +114,12 @@ func Test_FiledefaultGetHandler(t *testing.T) {
 		}
 		response, _ := testRequest(t, ts, jar, http.MethodGet, "/", "", ctype)
 		defer response.Body.Close()
-		assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		require.Equal(t, http.StatusBadRequest, response.StatusCode)
 	})
 }
 
 //Test_otherHandler - тестирование методов отличных от используемых
-func Test_FileotherHandler(t *testing.T) {
+func Test_File_otherHandler(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -128,12 +129,12 @@ func Test_FileotherHandler(t *testing.T) {
 		}
 		response, _ := testRequest(t, ts, jar, http.MethodPut, "/", "", ctype)
 		defer response.Body.Close()
-		assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		require.Equal(t, http.StatusBadRequest, response.StatusCode)
 	})
 }
 
 //Test_CreateShortURL - тестирование создания короткой ссылки
-func Test_FileCreateShortURL(t *testing.T) {
+func Test_File_CreateShortURL(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -156,7 +157,7 @@ func Test_FileCreateShortURL(t *testing.T) {
 }
 
 //Test_UnshortStatic - теститрование обратного преобразования короткой ссылки в исходную
-func Test_FileUnshortStatic(t *testing.T) {
+func Test_File_UnshortStatic(t *testing.T) {
 	type wanted struct {
 		statusCode int
 		body       string
@@ -257,8 +258,8 @@ func Test_FileUnshortStatic(t *testing.T) {
 	require.NoError(t, err)
 }
 
-//Test_File2WayTest - теститрование обратного преобразования короткой ссылки в исходную
-func Test_File2WayTest(t *testing.T) {
+//Test_File_2WayTest - теститрование обратного преобразования короткой ссылки в исходную
+func Test_File_2WayTest(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -276,13 +277,13 @@ func Test_File2WayTest(t *testing.T) {
 		defer response2.Body.Close()
 		require.Equal(t, http.StatusTemporaryRedirect, response2.StatusCode)
 		require.Equal(t, expected, response2.Header.Get("Location"))
-		err := os.Remove("./createme.txt")
-		require.NoError(t, err)
 	})
+	err := os.Remove("./createme.txt")
+	require.NoError(t, err)
 }
 
 //Test_APIShort - тестирование сокращателя через API
-func Test_FileAPIShort(t *testing.T) {
+func Test_File_APIShort(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -307,7 +308,7 @@ func Test_FileAPIShort(t *testing.T) {
 }
 
 //Test_API2Way - тестирование двухстороннего обмена через API
-func Test_FileAPI2Way(t *testing.T) {
+func Test_File_API2Way(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -344,7 +345,7 @@ func Test_FileAPI2Way(t *testing.T) {
 }
 
 //Test_ZippedRequest - теститрование сжатого запроса
-func Test_FileZippedRequest(t *testing.T) {
+func Test_File_ZippedRequest(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -368,7 +369,7 @@ func Test_FileZippedRequest(t *testing.T) {
 }
 
 //Test_ZippedAnswer - тестирование сжатия ответа с сервера
-func Test_FileZippedAnswer(t *testing.T) {
+func Test_File_ZippedAnswer(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -394,8 +395,8 @@ func Test_FileZippedAnswer(t *testing.T) {
 	})
 }
 
-//Test_2WayZip - тестирование работы сос жатием данных в обе стороны
-func Test_File2WayZip(t *testing.T) {
+//Test_2WayZip - тестирование работы со сжатием данных в обе стороны
+func Test_File_2WayZip(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -423,7 +424,7 @@ func Test_File2WayZip(t *testing.T) {
 }
 
 //Test_UserURLs - тестиирование получения всех ссылок пользователя
-func Test_FileUserURLs(t *testing.T) {
+func Test_File_UserURLs(t *testing.T) {
 	type wanted struct {
 		statusCode int
 		body       string
@@ -490,25 +491,25 @@ func Test_FileUserURLs(t *testing.T) {
 	defer ts.Close()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			jar, _ = cookiejar.New(nil)
 			switch tt.name {
 			case "Not existent cookie":
 				response, _ := testRequest(t, ts, jar, http.MethodGet, tt.args.query, "", tt.args.ctype)
 				defer response.Body.Close()
-				assert.Equal(t, http.StatusNoContent, response.StatusCode)
-				jar, _ = cookiejar.New(nil)
+				require.Equal(t, http.StatusNoContent, response.StatusCode)
 			case "Existent cookie":
 				response, _ := testRequest(t, ts, jar, http.MethodPost, "/", "http://example.org", map[string]string{
 					"Content-Type": "text/plain; charset=utf-8"})
 				defer response.Body.Close()
-				assert.Equal(t, http.StatusCreated, response.StatusCode)
+				require.Equal(t, http.StatusCreated, response.StatusCode)
 				response, _ = testRequest(t, ts, jar, http.MethodPost, "/", "http://example2.org", map[string]string{
 					"Content-Type": "text/plain; charset=utf-8"})
 				defer response.Body.Close()
-				assert.Equal(t, http.StatusCreated, response.StatusCode)
+				require.Equal(t, http.StatusCreated, response.StatusCode)
 				response, body := testRequest(t, ts, jar, http.MethodGet, tt.args.query, tt.args.body, tt.args.ctype)
 				defer response.Body.Close()
-				assert.Equal(t, "application/json", response.Header.Get("Content-Type"))
-				assert.Equal(t, http.StatusOK, response.StatusCode)
+				require.Equal(t, "application/json", response.Header.Get("Content-Type"))
+				require.Equal(t, http.StatusOK, response.StatusCode)
 				type answer struct {
 					Short    string `json:"short_url"`
 					Original string `json:"original_url"`
@@ -544,7 +545,7 @@ func Test_FileUserURLs(t *testing.T) {
 }
 
 //Test_Ping - тестирование фалового хранилища
-func Test_FilePing(t *testing.T) {
+func Test_File_Ping(t *testing.T) {
 	jar, r, _ := newFileServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
