@@ -23,28 +23,34 @@ import (
 )
 
 type app struct {
-	Storage storage.FileDB
+	Storage storage.Database
 	Config  config.OsVars
 	Data    helpers.Data
 }
 
+//NewData - создание пустого массива данных
 func NewData() helpers.Data {
 	s := make(helpers.Data)
 	return s
 }
 
-func NewApp() *app {
+//NewApp - функция для создания новой структуры для работы приложения
+func NewApp() (*app, error) {
 	s := app{}
-	s.Storage = storage.FileDB{}
 	s.Config = config.OsVars{}
+	err := s.Config.ReadEnv()
+	if err != nil {
+		return nil, err
+	}
 	s.Data = NewData()
-	return &s
+	return &s, nil
 }
 
 func (db *app) Router(r chi.Router) {
 	r.Get("/", defaultGetHandler)
 	r.Get("/{^[a-zA-Z]}", db.getHandler)
 	r.Get("/api/user/urls", db.userURLs)
+	r.Get("/ping", db.ConnectionTest)
 	r.Post("/", db.postHandler)
 	r.Post("/api/shorten", db.postAPIHandler)
 	r.MethodNotAllowed(otherHandler)
@@ -56,6 +62,16 @@ func defaultGetHandler(w http.ResponseWriter, r *http.Request) {
 
 func otherHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Bad request", http.StatusBadRequest)
+}
+
+func (db *app) ConnectionTest(w http.ResponseWriter, r *http.Request) {
+	err := db.Storage.Ping()
+	if err != nil {
+		http.Error(w, "Storage connection failed", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte{})
 }
 
 func (db *app) userURLs(w http.ResponseWriter, r *http.Request) {
@@ -207,6 +223,7 @@ func (db app) getHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+//DecompressRequest - middleware для декомпрессии входящих запросов
 func DecompressRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if (strings.Contains(r.Header.Get("Content-Encoding"), "gzip")) || (strings.Contains(r.Header.Get("Content-Encoding"), "br")) || (strings.Contains(r.Header.Get("Content-Encoding"), "deflate")) {
@@ -229,6 +246,7 @@ func DecompressRequest(next http.Handler) http.Handler {
 	})
 }
 
+//TimeTracer - middleware для остлеживания времени исполнения запроса
 func TimeTracer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tStart := time.Now()

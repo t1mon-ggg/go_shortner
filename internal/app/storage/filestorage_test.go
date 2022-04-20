@@ -9,6 +9,15 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
 )
 
+func Test_Ping(t *testing.T) {
+	f := FileDB{}
+	f.Name = "createme.txt"
+	err := f.Ping()
+	require.NoError(t, err)
+	err = os.Remove(f.Name)
+	require.NoError(t, err)
+
+}
 func Test_openFile(t *testing.T) {
 	type args struct {
 		filename string

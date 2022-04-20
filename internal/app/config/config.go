@@ -10,6 +10,7 @@ type OsVars struct {
 	BaseURL         string `env:"BASE_URL"`
 	ServerAddress   string `env:"SERVER_ADDRESS"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	Database        string `env:"DATABASE_DSN"`
 }
 
 func NewConfig() *OsVars {
@@ -17,6 +18,7 @@ func NewConfig() *OsVars {
 		BaseURL:         "http://127.0.0.1:8080",
 		ServerAddress:   "127.0.0.1:8080",
 		FileStoragePath: "./storage",
+		Database:        "",
 	}
 	return s
 }
@@ -33,8 +35,11 @@ func (cfg *OsVars) ReadEnv() error {
 	if c.ServerAddress != "" {
 		cfg.ServerAddress = c.ServerAddress
 	}
-	if c.FileStoragePath != "" {
+	if c.Database != "" {
 		cfg.FileStoragePath = c.FileStoragePath
+	}
+	if c.Database != "" {
+		cfg.Database = c.Database
 	}
 	return nil
 }
@@ -43,7 +48,7 @@ func (cfg *OsVars) ReadCli() {
 	baseurlptr := flag.String("b", "", "BASE_URL")
 	srvaddrptr := flag.String("a", "", "SERVER_ADDRESS")
 	fpathptr := flag.String("f", "", "FILE_STORAGE_PATH")
-
+	dbpathptr := flag.String("d", "", "DATABASE_DSN")
 	flag.Parse()
 	if isFlagPassed("b") {
 		cfg.BaseURL = *baseurlptr
@@ -54,6 +59,9 @@ func (cfg *OsVars) ReadCli() {
 
 	if isFlagPassed("f") {
 		cfg.FileStoragePath = *fpathptr
+	}
+	if isFlagPassed("d") {
+		cfg.Database = *dbpathptr
 	}
 
 }

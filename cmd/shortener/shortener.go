@@ -6,23 +6,27 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/t1mon-ggg/go_shortner/internal/app/config"
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 	"github.com/t1mon-ggg/go_shortner/internal/app/webhandlers"
 )
 
 func main() {
-	AppData := webhandlers.NewApp()
-	AppData.Config = *config.NewConfig()
-	err := AppData.Config.ReadEnv()
+	AppData, err := webhandlers.NewApp()
+	if err != nil {
+		log.Println(err)
+	}
+	AppData.Data, err = AppData.Storage.Read()
 	if err != nil {
 		log.Fatal(err)
 	}
 	AppData.Config.ReadCli()
-	AppData.Storage = *storage.NewFileDB(AppData.Config.FileStoragePath)
-	AppData.Data, err = AppData.Storage.Read()
-	if err != nil {
-		log.Fatal(err)
+	if AppData.Config.Database != "" {
+		AppData.Storage, err = storage.NewDB(AppData.Config.Database)
+		if err != nil {
+			log.Println(err)
+		}
+	} else {
+		AppData.Storage = storage.NewFileDB(AppData.Config.FileStoragePath)
 	}
 	r := chi.NewRouter()
 

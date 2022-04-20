@@ -5,8 +5,8 @@ import (
 )
 
 type Database interface {
-	OpenFile(string) error
 	Write(helpers.Data) error
 	Read() (helpers.Data, error)
 	Close() error
+	Ping() error
 }

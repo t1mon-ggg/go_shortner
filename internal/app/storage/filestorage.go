@@ -36,6 +36,20 @@ func checkFile(filename string) error {
 	return nil
 }
 
+func (f *FileDB) Ping() error {
+	file, err := os.OpenFile(f.Name, os.O_RDONLY, 0777)
+	if err != nil {
+		return err
+	}
+	file.Close()
+	file, err = os.OpenFile(f.Name, os.O_WRONLY, 0777)
+	if err != nil {
+		return err
+	}
+	file.Close()
+	return nil
+}
+
 //readFile - создание файлового дескриптора для чтения из файла
 func (f *FileDB) readFile() error {
 	err := checkFile(f.Name)
