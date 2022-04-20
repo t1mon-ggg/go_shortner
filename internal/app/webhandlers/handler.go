@@ -32,7 +32,7 @@ type app struct {
 
 //NewData - создание пустого массива данных
 func NewData() helpers.Data {
-	s := make(helpers.Data)
+	s := make(map[string]helpers.WebData)
 	return s
 }
 
