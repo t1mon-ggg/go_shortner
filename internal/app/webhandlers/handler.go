@@ -246,19 +246,14 @@ func (db *app) addCookie(w http.ResponseWriter, name, value string, key string) 
 		Value:  value + sign,
 		MaxAge: 0,
 	}
-	log.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	if entry, ok := db.Data[value]; ok {
-		log.Println("11111111111111111111111111")
 		entry.Key = key
 		db.Data[value] = entry
 	} else {
 		var entry helpers.WebData
 		entry.Key = key
 		entry.Short = make(map[string]string)
-		log.Println("22222222222222222222222222")
 		db.Data[value] = entry
-		log.Println("33333333333333333333333333")
-		// db.Storage.Write(db.Data)
 	}
 	http.SetCookie(w, &cookie)
 }
@@ -278,13 +273,10 @@ func (db *app) checkCookie(cookie *http.Cookie) bool {
 func (db *app) Cookies(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookies := r.Cookies()
-		log.Println("!!!!!!!!!!!!!!!!!!!", "Cookies", cookies)
 		if len(cookies) != 0 {
-			log.Println("!!!!!!!!!!!!!!!!!!!", "len != 0", cookies)
 			found := false
 			for _, cookie := range cookies {
 				if cookie.Name == "Client_ID" {
-					log.Println("!!!!!!!!!!!!!!!!!!!", "Client_ID found", cookie)
 					if !db.checkCookie(cookie) {
 						value := rand.RandStringRunes(32)
 						key := rand.RandStringRunes(64)
@@ -300,7 +292,6 @@ func (db *app) Cookies(next http.Handler) http.Handler {
 				db.addCookie(w, "Client_ID", value, key)
 			}
 		} else {
-			log.Println("!!!!!!!!!!!!!!!!!!!", "len == 0", cookies)
 			value := rand.RandStringRunes(32)
 			key := rand.RandStringRunes(64)
 			db.addCookie(w, "Client_ID", value, key)
