@@ -257,6 +257,8 @@ func (db *app) addCookie(w http.ResponseWriter, name, value string, key string) 
 		entry.Short = make(map[string]string)
 		log.Println("22222222222222222222222222")
 		db.Data[value] = entry
+		log.Println("33333333333333333333333333")
+		// db.Storage.Write(db.Data)
 	}
 	http.SetCookie(w, &cookie)
 }
