@@ -252,11 +252,11 @@ func (db *app) addCookie(w http.ResponseWriter, name, value string, key string) 
 		entry.Key = key
 		db.Data[value] = entry
 	} else {
-		log.Println("22222222222222222222222222")
 		var entry helpers.WebData
 		entry.Key = key
 		entry.Short = make(map[string]string)
 		db.Data[value] = entry
+		log.Println("22222222222222222222222222")
 	}
 	http.SetCookie(w, &cookie)
 }
