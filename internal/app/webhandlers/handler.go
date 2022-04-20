@@ -15,12 +15,12 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/config"
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
 	"github.com/t1mon-ggg/go_shortner/internal/app/rand"
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
-	"github.com/t1mon-ggg/go_shortner/vendor/github.com/go-chi/chi/middleware"
 )
 
 func idCookieValue(w http.ResponseWriter, r *http.Request) string {
