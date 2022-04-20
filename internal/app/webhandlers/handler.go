@@ -289,11 +289,12 @@ func (db *app) Cookies(next http.Handler) http.Handler {
 			log.Println("add cookie")
 			db.addCookie(w, "Client_ID", value, []byte(key))
 		} else {
-			if !db.checkCookie(cookie) {
-				value := rand.RandStringRunes(32)
-				key := rand.RandStringRunes(64)
-				db.addCookie(w, "Client_ID", value, []byte(key))
-			}
+			// if !db.checkCookie(cookie) {
+			// 	value := rand.RandStringRunes(32)
+			// 	key := rand.RandStringRunes(64)
+			// 	db.addCookie(w, "Client_ID", value, []byte(key))
+			// }
+			log.Println(cookie)
 		}
 		next.ServeHTTP(w, r)
 	})
