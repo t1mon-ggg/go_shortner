@@ -31,10 +31,10 @@ func newFileServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *app) {
 	if err != nil {
 		log.Println(err)
 	}
-	db, err := NewApp()
+	db := NewApp()
 	require.NoError(t, err)
 	db.Storage = storage.NewFileDB("./createme.txt")
-	db.Config = *config.NewConfig()
+	db.Config = config.NewConfig()
 	db.Data = make(helpers.Data)
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)

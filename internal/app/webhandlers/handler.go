@@ -24,7 +24,7 @@ import (
 
 type app struct {
 	Storage storage.Database
-	Config  config.OsVars
+	Config  *config.Vars
 	Data    helpers.Data
 }
 
@@ -35,15 +35,11 @@ func NewData() helpers.Data {
 }
 
 //NewApp - функция для создания новой структуры для работы приложения
-func NewApp() (*app, error) {
+func NewApp() *app {
 	s := app{}
-	s.Config = config.OsVars{}
-	err := s.Config.ReadEnv()
-	if err != nil {
-		return nil, err
-	}
+	s.Config = config.NewConfig()
 	s.Data = NewData()
-	return &s, nil
+	return &s
 }
 
 func (db *app) Router(r chi.Router) {

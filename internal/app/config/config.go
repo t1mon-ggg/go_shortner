@@ -6,25 +6,25 @@ import (
 	"github.com/caarlos0/env"
 )
 
-type OsVars struct {
+type Vars struct {
 	BaseURL         string `env:"BASE_URL"`
 	ServerAddress   string `env:"SERVER_ADDRESS"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Database        string `env:"DATABASE_DSN"`
 }
 
-func NewConfig() *OsVars {
-	s := &OsVars{
+func NewConfig() *Vars {
+	s := Vars{
 		BaseURL:         "http://127.0.0.1:8080",
 		ServerAddress:   "127.0.0.1:8080",
 		FileStoragePath: "./storage",
 		Database:        "",
 	}
-	return s
+	return &s
 }
 
-func (cfg *OsVars) ReadEnv() error {
-	var c OsVars
+func (cfg *Vars) ReadEnv() error {
+	var c Vars
 	err := env.Parse(&c)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func (cfg *OsVars) ReadEnv() error {
 	return nil
 }
 
-func (cfg *OsVars) ReadCli() {
+func (cfg *Vars) ReadCli() {
 	baseurlptr := flag.String("b", "", "BASE_URL")
 	srvaddrptr := flag.String("a", "", "SERVER_ADDRESS")
 	fpathptr := flag.String("f", "", "FILE_STORAGE_PATH")

@@ -11,13 +11,10 @@ import (
 )
 
 func main() {
-	AppData, err := webhandlers.NewApp()
+	AppData := webhandlers.NewApp()
+	err := AppData.Config.ReadEnv()
 	if err != nil {
 		log.Println(err)
-	}
-	AppData.Data, err = AppData.Storage.Read()
-	if err != nil {
-		log.Fatal(err)
 	}
 	AppData.Config.ReadCli()
 	if AppData.Config.Database != "" {
@@ -27,6 +24,10 @@ func main() {
 		}
 	} else {
 		AppData.Storage = storage.NewFileDB(AppData.Config.FileStoragePath)
+	}
+	AppData.Data, err = AppData.Storage.Read()
+	if err != nil {
+		log.Fatal(err)
 	}
 	r := chi.NewRouter()
 
