@@ -20,6 +20,7 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
 	"github.com/t1mon-ggg/go_shortner/internal/app/rand"
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
+	"github.com/t1mon-ggg/go_shortner/vendor/github.com/go-chi/chi/middleware"
 )
 
 func idCookieValue(w http.ResponseWriter, r *http.Request) string {
@@ -298,4 +299,13 @@ func (db *app) Cookies(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+func (db *app) MyMiddlewares(r *chi.Mux) {
+	r.Use(middleware.Compress(5))
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(DecompressRequest)
+	r.Use(db.Cookies)
 }

@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
 	"github.com/t1mon-ggg/go_shortner/internal/app/webhandlers"
 )
 
@@ -26,13 +25,7 @@ func main() {
 	}
 	r := chi.NewRouter()
 
-	r.Use(middleware.Compress(5))
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(webhandlers.DecompressRequest)
-	r.Use(AppData.Cookies)
+	AppData.MyMiddlewares(r)
 
 	r.Route("/", AppData.Router)
 

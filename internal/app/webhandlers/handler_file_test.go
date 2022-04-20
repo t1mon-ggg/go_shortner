@@ -17,7 +17,6 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -37,14 +36,7 @@ func newFileServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *app) {
 	db.Config = config.NewConfig()
 	db.Data = make(helpers.Data)
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.AllowContentEncoding("gzip", "br", "deflate"))
-	r.Use(middleware.Compress(5, "application/json"))
-	r.Use(DecompressRequest)
-	r.Use(TimeTracer)
-	r.Use(db.Cookies)
+	db.MyMiddlewares(r)
 	r.Route("/", db.Router)
 	return jar, r, db
 }
