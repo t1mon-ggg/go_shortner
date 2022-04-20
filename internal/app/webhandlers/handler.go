@@ -277,10 +277,11 @@ func (db *app) Cookies(next http.Handler) http.Handler {
 			for _, cookie := range cookies {
 				if cookie.Name == "Client_ID" {
 					if !db.checkCookie(cookie) {
-						found = true
 						value := rand.RandStringRunes(32)
 						key := rand.RandStringRunes(64)
 						db.addCookie(w, "Client_ID", value, key)
+					} else {
+						found = true
 					}
 				}
 			}
