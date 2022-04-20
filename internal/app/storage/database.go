@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"log"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -17,16 +18,18 @@ type Postgresql struct {
 //NewDB - создание ссыылки на структуру для работы с базой данных
 func NewDB(conn string) (*Postgresql, error) {
 	db := Postgresql{Conn: conn}
-	err := db.open(conn)
+	err := db.open()
 	if err != nil {
+		log.Println("Connection to PostgreSQL failed")
 		return nil, err
 	}
+	log.Println("Successfull connection to PostgreSQL")
 	return &db, nil
 }
 
-func (database *Postgresql) open(connStr string) error {
+func (database *Postgresql) open() error {
 	var err error
-	database.db, err = sql.Open("postgres", connStr)
+	database.db, err = sql.Open("postgres", database.Conn)
 	if err != nil {
 		return err
 	}

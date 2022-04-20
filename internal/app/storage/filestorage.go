@@ -25,11 +25,13 @@ func NewFileDB(name string) *FileDB {
 
 //checkFile - функция проверки существования файла и его создания
 func checkFile(filename string) error {
-	_, staterr := os.Stat(filename)
-	if os.IsNotExist(staterr) {
-		f, createerr := os.Create(filename)
-		if createerr != nil {
-			return createerr
+	var err error
+	var f *os.File
+	_, err = os.Stat(filename)
+	if os.IsNotExist(err) {
+		f, err = os.Create(filename)
+		if err != nil {
+			return err
 		}
 		f.Close()
 	}
