@@ -82,12 +82,12 @@ func otherHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *app) ConnectionTest(w http.ResponseWriter, r *http.Request) {
-	// log.Println("DEBUG:", "Check storage connection")
-	// err := db.Storage.Ping()
-	// if err != nil {
-	// 	http.Error(w, "Storage connection failed", http.StatusInternalServerError)
-	// 	return
-	// }
+	log.Println("DEBUG:", "Check storage connection")
+	err := db.Storage.Ping()
+	if err != nil {
+		http.Error(w, "Storage connection failed", http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte{})
 }
