@@ -235,6 +235,8 @@ func TimeTracer(next http.Handler) http.Handler {
 }
 
 func (db *app) addCookie(w http.ResponseWriter, name, value string, key string) {
+	log.Println(db.Data)
+	log.Println(name, value, key)
 	h := hmac.New(sha256.New, []byte(key))
 	h.Write([]byte(value))
 	signed := h.Sum(nil)
