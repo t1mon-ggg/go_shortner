@@ -70,15 +70,17 @@ func (db *app) Router(r chi.Router) {
 }
 
 func defaultGetHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("DEBUG:", "Default Get handler")
 	http.Error(w, "Empty request", http.StatusBadRequest)
 }
 
 func otherHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("DEBUG:", "Other handler")
 	http.Error(w, "Bad request", http.StatusBadRequest)
 }
 
 func (db *app) ConnectionTest(w http.ResponseWriter, r *http.Request) {
-	log.Println("Check storage connection")
+	log.Println("DEBUG:", "Check storage connection")
 	err := db.Storage.Ping()
 	if err != nil {
 		http.Error(w, "Storage connection failed", http.StatusInternalServerError)
@@ -89,6 +91,7 @@ func (db *app) ConnectionTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *app) userURLs(w http.ResponseWriter, r *http.Request) {
+	log.Println("DEBUG:", "userURLs handler")
 	type answer struct {
 		Short    string `json:"short_url"`
 		Original string `json:"original_url"`
@@ -119,6 +122,7 @@ func (db *app) userURLs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("DEBUG:", "Post handler")
 	value := idCookieValue(w, r)
 	defer r.Body.Close()
 	blongURL, err := io.ReadAll(r.Body)
@@ -137,6 +141,7 @@ func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("DEBUG:", "Post api handler")
 	value := idCookieValue(w, r)
 	type sURL struct {
 		ShortURL string `json:"result"`
@@ -182,6 +187,7 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db app) getHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("DEBUG:", "Regexp Get handler")
 	p := r.RequestURI
 	p = p[1:]
 	if len(p) != 8 {
