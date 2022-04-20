@@ -314,5 +314,5 @@ func (db *app) MyMiddlewares(r *chi.Mux) {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(DecompressRequest)
-	r.Use(db.Cookies)
+	// r.Use(db.Cookies)
 }
