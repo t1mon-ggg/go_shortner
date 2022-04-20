@@ -62,7 +62,8 @@ func (database *Postgresql) Close() error {
 
 //Read - чтение из базы данных
 func (database *Postgresql) Read() (helpers.Data, error) {
-	return nil, nil
+	a := make(map[string]helpers.WebData)
+	return a, nil
 }
 
 //Write - запись в базы данных
