@@ -64,10 +64,15 @@ func (database *Postgresql) Close() error {
 
 //Read - чтение из базы данных
 func (database *Postgresql) Read() (helpers.Data, error) {
-	return nil, nil
+	var a helpers.Data
+	var b error
+	a, b = nil, nil
+	return a, b
 }
 
 //Write - запись в базы данных
 func (database *Postgresql) Write(data helpers.Data) error {
-	return nil
+	var a error
+	a = nil
+	return a
 }

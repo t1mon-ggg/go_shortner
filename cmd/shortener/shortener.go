@@ -41,6 +41,8 @@ func main() {
 
 	r.Route("/", AppData.Router)
 
+	log.Println("Current config", *AppData.Config)
+
 	http.ListenAndServe(AppData.Config.ServerAddress, r)
 
 }
