@@ -244,6 +244,7 @@ func TimeTracer(next http.Handler) http.Handler {
 }
 
 func (db *app) addCookie(w http.ResponseWriter, name, value string, key []byte) {
+	log.Println("DEBUG:", "add cookie function")
 	h := hmac.New(sha256.New, key)
 	h.Write([]byte(value))
 	signed := h.Sum(nil)
@@ -265,6 +266,7 @@ func (db *app) addCookie(w http.ResponseWriter, name, value string, key []byte) 
 	http.SetCookie(w, &cookie)
 }
 func (db *app) checkCookie(cookie *http.Cookie) bool {
+	log.Println("DEBUG:", "Check cookie function")
 	data := cookie.Value[:32]
 	signstring := cookie.Value[32:]
 	sign, err := hex.DecodeString(signstring)
@@ -278,6 +280,7 @@ func (db *app) checkCookie(cookie *http.Cookie) bool {
 }
 
 func (db *app) Cookies(next http.Handler) http.Handler {
+	log.Println("DEBUG:", "Cookie middleware")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("Client_ID")
 		if err != nil {
