@@ -19,10 +19,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	AppData.Data, err = AppData.Storage.Read()
-	if err != nil {
-		log.Fatal(err)
-	}
 	r := chi.NewRouter()
 
 	AppData.MyMiddlewares(r)

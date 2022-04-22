@@ -20,7 +20,7 @@ func NewConfig() *Vars {
 	s := Vars{
 		BaseURL:         "http://127.0.0.1:8080",
 		ServerAddress:   "127.0.0.1:8080",
-		FileStoragePath: "./storage",
+		FileStoragePath: "",
 		Database:        "",
 	}
 	return &s
@@ -81,7 +81,11 @@ func (cfg *Vars) SetStorage() (storage.Database, error) {
 		}
 		return db, nil
 	}
-	db := storage.NewFileDB(cfg.FileStoragePath)
+	if cfg.FileStoragePath != "" {
+		db := storage.NewFileDB(cfg.FileStoragePath)
+		return db, nil
+	}
+	db := storage.NewMemDB()
 	return db, nil
 }
 

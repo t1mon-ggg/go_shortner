@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
+	"golang.org/x/exp/maps"
 )
 
 //FileDB - структура для работы с фаловым хранилищем данных
@@ -31,6 +32,7 @@ func checkFile(filename string) error {
 	if os.IsNotExist(err) {
 		f, err = os.Create(filename)
 		if err != nil {
+			log.Println("1111")
 			return err
 		}
 		f.Close()
@@ -71,10 +73,12 @@ func (f *FileDB) Ping() error {
 func (f *FileDB) readFile() error {
 	err := checkFile(f.Name)
 	if err != nil {
+		log.Println("2222")
 		return err
 	}
 	file, err := os.OpenFile(f.Name, os.O_RDONLY, 0777)
 	if err != nil {
+		log.Println("3333")
 		return err
 	}
 	f.file = file
@@ -85,10 +89,12 @@ func (f *FileDB) readFile() error {
 func (f *FileDB) rewriteFile() error {
 	err := checkFile(f.Name)
 	if err != nil {
+		log.Println("4444")
 		return err
 	}
 	file, err := os.OpenFile(f.Name, os.O_WRONLY|os.O_TRUNC, 0777)
 	if err != nil {
+		log.Println("5555")
 		return err
 	}
 	f.file = file
@@ -112,13 +118,30 @@ func (f *FileDB) Close() error {
 
 //Write - запись в файл
 func (f *FileDB) Write(m helpers.Data) error {
+	db, err := f.readAllFile()
+	if err != nil {
+		log.Println("7777")
+		return err
+	}
+	for i := range m {
+		if !maps.Equal(db[i].Short, m[i].Short) {
+			maps.Copy(m[i].Short, db[i].Short)
+			e1 := m[i]
+			e2 := db[i]
+			e1.Key = e2.Key
+			m[i] = e1
+		}
+	}
+	maps.Copy(db, m)
+
 	f.rewriteFile()
 	encoder := f.getCoder()
-	for i := range m {
-		mm := make(helpers.Data)
-		mm[i] = m[i]
-		err := encoder.Encode(mm)
+	for i := range db {
+		wr := make(helpers.Data)
+		wr[i] = db[i]
+		err := encoder.Encode(wr)
 		if err != nil {
+			log.Println("8888")
 			return err
 		}
 	}
@@ -127,19 +150,67 @@ func (f *FileDB) Write(m helpers.Data) error {
 	return nil
 }
 
-//Read - чтение из файла
-func (f *FileDB) Read() (helpers.Data, error) {
+//ReadByCookie - чтение из файла
+func (f *FileDB) readAllFile() (helpers.Data, error) {
 	f.readFile()
 	scanner := f.getScanner()
 	m := make(helpers.Data)
 	for scanner.Scan() {
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
+			log.Println("9999")
 			return nil, err
 		}
 	}
-	log.Printf("Restored from file %d records\n", len(m))
 	f.Close()
 	f.file = nil
 	return m, nil
+}
+
+//ReadByCookie - чтение из файла
+func (f *FileDB) ReadByCookie(s string) (helpers.Data, error) {
+	f.readFile()
+	scanner := f.getScanner()
+	m := make(helpers.Data)
+	for scanner.Scan() {
+		err := json.Unmarshal([]byte(scanner.Text()), &m)
+		if err != nil {
+			log.Println("0000")
+			return nil, err
+		}
+	}
+	data := make(map[string]helpers.WebData)
+	for cookie, webdata := range m {
+		if cookie == s {
+			data[s] = webdata
+		}
+	}
+	f.Close()
+	f.file = nil
+	return data, nil
+}
+
+//ReadByTag - чтение из файла
+func (f *FileDB) ReadByTag(s string) (map[string]string, error) {
+	f.readFile()
+	scanner := f.getScanner()
+	m := make(helpers.Data)
+	for scanner.Scan() {
+		err := json.Unmarshal([]byte(scanner.Text()), &m)
+		if err != nil {
+			log.Println("!!!!")
+			return nil, err
+		}
+	}
+	f.Close()
+	f.file = nil
+	data := make(map[string]string)
+	for _, webdata := range m {
+		for tag, url := range webdata.Short {
+			if tag == s {
+				data[tag] = url
+			}
+		}
+	}
+	return data, nil
 }

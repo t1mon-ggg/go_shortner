@@ -6,7 +6,8 @@ import (
 
 type Database interface {
 	Write(helpers.Data) error
-	Read() (helpers.Data, error)
+	ReadByCookie(string) (helpers.Data, error)
+	ReadByTag(string) (map[string]string, error)
 	Close() error
 	Ping() error
 }

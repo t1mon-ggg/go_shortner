@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -24,14 +23,13 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
 
-func newFileServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *app) {
+func newServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *app) {
 	jar, err := cookiejar.New(nil)
 	require.NoError(t, err)
 	db := NewApp()
-	db.Storage = storage.NewFileDB("./createme.txt")
+	db.Storage, err = storage.NewPostgreSQL("postgresql://postgres:admin@127.0.0.1:5432/praktikum?sslmode=disable")
+	require.NoError(t, err)
 	db.Config = config.NewConfig()
-	db.Data = make(helpers.Data)
-	db.Data, err = db.Storage.Read()
 	require.NoError(t, err)
 	r := chi.NewRouter()
 	db.MyMiddlewares(r)
@@ -104,8 +102,8 @@ func testRequest(t *testing.T, ts *httptest.Server, jar *cookiejar.Jar, method, 
 }
 
 // Test_defaultGetHandler - тестирование корневого хендлера
-func Test_File_defaultGetHandler(t *testing.T) {
-	jar, r, _ := newFileServer(t)
+func Test_defaultGetHandler(t *testing.T) {
+	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	t.Run("Test default Get handler", func(t *testing.T) {
@@ -119,8 +117,8 @@ func Test_File_defaultGetHandler(t *testing.T) {
 }
 
 //Test_otherHandler - тестирование методов отличных от используемых
-func Test_File_otherHandler(t *testing.T) {
-	jar, r, _ := newFileServer(t)
+func Test_otherHandler(t *testing.T) {
+	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	t.Run("Test other method handler", func(t *testing.T) {
@@ -134,8 +132,8 @@ func Test_File_otherHandler(t *testing.T) {
 }
 
 //Test_CreateShortURL - тестирование создания короткой ссылки
-func Test_File_CreateShortURL(t *testing.T) {
-	jar, r, _ := newFileServer(t)
+func Test_CreateShortURL(t *testing.T) {
+	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	t.Run("Test default Get handler", func(t *testing.T) {
@@ -151,13 +149,11 @@ func Test_File_CreateShortURL(t *testing.T) {
 			t.Fatal("Regexp error")
 		}
 		require.Equal(t, true, matched)
-		err = os.Remove("./createme.txt")
-		require.NoError(t, err)
 	})
 }
 
 //Test_UnshortStatic - теститрование обратного преобразования короткой ссылки в исходную
-func Test_File_UnshortStatic(t *testing.T) {
+func Test_UnshortStatic(t *testing.T) {
 	type wanted struct {
 		statusCode int
 		body       string
@@ -239,9 +235,10 @@ func Test_File_UnshortStatic(t *testing.T) {
 			},
 		},
 	}
-	jar, r, db := newFileServer(t)
-	db.Data["cookie1"] = helpers.WebData{Key: "secret_key", Short: map[string]string{"abcdABCD": "http://example.org"}}
-	db.Storage.Write(db.Data)
+	jar, r, db := newServer(t)
+	data := make(map[string]helpers.WebData)
+	data["cookie1"] = helpers.WebData{Key: "secret_key", Short: map[string]string{"abcdABCD": "http://example.org"}}
+	db.Storage.Write(data)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	for _, tt := range tests {
@@ -254,13 +251,11 @@ func Test_File_UnshortStatic(t *testing.T) {
 			}
 		})
 	}
-	err := os.Remove("./createme.txt")
-	require.NoError(t, err)
 }
 
-//Test_File_2WayTest - теститрование обратного преобразования короткой ссылки в исходную
-func Test_File_2WayTest(t *testing.T) {
-	jar, r, _ := newFileServer(t)
+//Test_2WayTest - теститрование обратного преобразования короткой ссылки в исходную
+func Test_2WayTest(t *testing.T) {
+	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	t.Run("Test 2way test", func(t *testing.T) {
@@ -278,13 +273,11 @@ func Test_File_2WayTest(t *testing.T) {
 		require.Equal(t, http.StatusTemporaryRedirect, response2.StatusCode)
 		require.Equal(t, expected, response2.Header.Get("Location"))
 	})
-	err := os.Remove("./createme.txt")
-	require.NoError(t, err)
 }
 
 //Test_APIShort - тестирование сокращателя через API
-func Test_File_APIShort(t *testing.T) {
-	jar, r, _ := newFileServer(t)
+func Test_APIShort(t *testing.T) {
+	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	t.Run("Test default Get handler", func(t *testing.T) {
@@ -303,13 +296,11 @@ func Test_File_APIShort(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, matched)
 	})
-	err := os.Remove("./createme.txt")
-	require.NoError(t, err)
 }
 
 //Test_API2Way - тестирование двухстороннего обмена через API
-func Test_File_API2Way(t *testing.T) {
-	jar, r, _ := newFileServer(t)
+func Test_API2Way(t *testing.T) {
+	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	t.Run("2Way API", func(t *testing.T) {
@@ -340,13 +331,11 @@ func Test_File_API2Way(t *testing.T) {
 		require.Equal(t, http.StatusTemporaryRedirect, response.StatusCode)
 		require.Equal(t, s.URL, response.Header.Get("Location"))
 	})
-	err := os.Remove("./createme.txt")
-	require.NoError(t, err)
 }
 
 //Test_ZippedRequest - теститрование сжатого запроса
-func Test_File_ZippedRequest(t *testing.T) {
-	jar, r, _ := newFileServer(t)
+func Test_ZippedRequest(t *testing.T) {
+	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	t.Run("Test default Get handler", func(t *testing.T) {
@@ -369,8 +358,8 @@ func Test_File_ZippedRequest(t *testing.T) {
 }
 
 //Test_ZippedAnswer - тестирование сжатия ответа с сервера
-func Test_File_ZippedAnswer(t *testing.T) {
-	jar, r, _ := newFileServer(t)
+func Test_ZippedAnswer(t *testing.T) {
+	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	t.Run("Test default Get handler", func(t *testing.T) {
@@ -396,8 +385,8 @@ func Test_File_ZippedAnswer(t *testing.T) {
 }
 
 //Test_2WayZip - тестирование работы со сжатием данных в обе стороны
-func Test_File_2WayZip(t *testing.T) {
-	jar, r, _ := newFileServer(t)
+func Test_2WayZip(t *testing.T) {
+	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	t.Run("Test default Get handler", func(t *testing.T) {
@@ -424,7 +413,7 @@ func Test_File_2WayZip(t *testing.T) {
 }
 
 //Test_UserURLs - тестиирование получения всех ссылок пользователя
-func Test_File_UserURLs(t *testing.T) {
+func Test_UserURLs(t *testing.T) {
 	type wanted struct {
 		statusCode int
 		body       string
@@ -486,7 +475,7 @@ func Test_File_UserURLs(t *testing.T) {
 			},
 		},
 	}
-	jar, r, _ := newFileServer(t)
+	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	for _, tt := range tests {
@@ -540,29 +529,19 @@ func Test_File_UserURLs(t *testing.T) {
 			}
 		})
 	}
-	err := os.Remove("./createme.txt")
-	require.NoError(t, err)
 }
 
 //Test_Ping - тестирование фалового хранилища
-func Test_File_Ping(t *testing.T) {
-	jar, r, _ := newFileServer(t)
+func Test_Ping(t *testing.T) {
+	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
-	t.Run("Test default Ping handler", func(t *testing.T) {
+	t.Run("Test Ping handler", func(t *testing.T) {
 		ctype := map[string]string{
 			"Content-Type": "text/plain; charset=utf-8",
 		}
-		f, err := os.Create("./createme.txt")
-		require.NoError(t, err)
-		f.Close()
 		response, _ := testRequest(t, ts, jar, http.MethodGet, "/ping", "", ctype)
 		defer response.Body.Close()
 		require.Equal(t, http.StatusOK, response.StatusCode)
-		err = os.Remove("./createme.txt")
-		require.NoError(t, err)
-		response, _ = testRequest(t, ts, jar, http.MethodGet, "/ping", "", ctype)
-		defer response.Body.Close()
-		require.Equal(t, http.StatusInternalServerError, response.StatusCode)
 	})
 }

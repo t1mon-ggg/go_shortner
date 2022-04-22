@@ -9,7 +9,7 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
 )
 
-func Test_Ping(t *testing.T) {
+func Test_File_Ping(t *testing.T) {
 	var err error
 	f := FileDB{}
 	f.Name = "createme.txt"
@@ -55,7 +55,7 @@ func Test_openFile(t *testing.T) {
 	})
 }
 
-func TestFileDB_Write(t *testing.T) {
+func Test_FileDB_Write(t *testing.T) {
 	tests := []struct {
 		name string
 		args helpers.Data
@@ -94,55 +94,6 @@ func TestFileDB_Write(t *testing.T) {
 			f := NewFileDB("createme.txt")
 			err := f.Write(tt.args)
 			require.NoError(t, err)
-		})
-	}
-	t.Run("Storage Close test", func(t *testing.T) {
-		err := os.Remove("createme.txt")
-		require.NoError(t, err)
-	})
-}
-
-func TestFileDB_Read(t *testing.T) {
-	type webdata struct {
-		Key     string `json:"key"`
-		Shorten map[string]string
-	}
-	f := NewFileDB("createme.txt")
-	data := helpers.Data{
-		"cookie1": {
-			Key: "secret_key1",
-			Short: map[string]string{
-				"djsvndAD": "http://example.org",
-				"12345678": "http://example1.org",
-			},
-		},
-	}
-	f.Write(data)
-
-	tests := []struct {
-		name string
-		f    *FileDB
-		want helpers.Data
-	}{
-		{
-			name: "read json file",
-			f:    f,
-			want: helpers.Data{
-				"cookie1": {
-					Key: "secret_key1",
-					Short: map[string]string{
-						"djsvndAD": "http://example.org",
-						"12345678": "http://example1.org",
-					},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.f.Read()
-			require.NoError(t, err)
-			require.Equal(t, tt.want, got)
 		})
 	}
 	t.Run("Storage Close test", func(t *testing.T) {

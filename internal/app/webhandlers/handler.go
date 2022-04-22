@@ -27,7 +27,7 @@ import (
 type app struct {
 	Storage storage.Database
 	Config  *config.Vars
-	Data    helpers.Data
+	//Data    helpers.Data
 }
 
 //NewData - создание пустого массива данных
@@ -40,7 +40,6 @@ func NewData() helpers.Data {
 func NewApp() *app {
 	s := app{}
 	s.Config = config.NewConfig()
-	s.Data = NewData()
 	return &s
 }
 
@@ -78,32 +77,39 @@ func (db *app) userURLs(w http.ResponseWriter, r *http.Request) {
 		Original string `json:"original_url"`
 	}
 	value := idCookieValue(w, r)
-	if data, ok := db.Data[value]; ok {
-		if len(data.Short) == 0 {
-			http.Error(w, "No Content", http.StatusNoContent)
-			return
-		}
-		a := make([]answer, 0)
-		for i := range data.Short {
-			a = append(a, answer{Short: fmt.Sprintf("%s/%s", db.Config.BaseURL, i), Original: data.Short[i]})
-		}
-		d, err := json.MarshalIndent(a, "", "\t")
-		if err != nil {
-			http.Error(w, "Json Error", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Add("Content-type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(d)
-	} else {
+	data, err := db.Storage.ReadByCookie(value)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if len(data) == 0 {
 		http.Error(w, "No Content", http.StatusNoContent)
 		return
 	}
-
+	a := make([]answer, 0)
+	for i, content := range data[value].Short {
+		a = append(a, answer{Short: fmt.Sprintf("%s/%s", db.Config.BaseURL, i), Original: content})
+	}
+	d, err := json.MarshalIndent(a, "", "\t")
+	if err != nil {
+		http.Error(w, "Json Error", http.StatusInternalServerError)
+		return
+	}
+	if len(a) == 0 {
+		http.Error(w, "No Content", http.StatusNoContent)
+		return
+	}
+	w.Header().Add("Content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(d)
 }
 
 func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
+	data := make(map[string]helpers.WebData)
 	value := idCookieValue(w, r)
+	entry := helpers.WebData{}
+	entry.Key = ""
+	entry.Short = make(map[string]string)
 	defer r.Body.Close()
 	blongURL, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -111,11 +117,9 @@ func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	slongURL := string(blongURL)
 	surl := rand.RandStringRunes(8)
-	if entry, ok := db.Data[value]; ok {
-		entry.Short[surl] = slongURL
-		db.Data[value] = entry
-	}
-	err = db.Storage.Write(db.Data)
+	entry.Short[surl] = slongURL
+	data[value] = entry
+	err = db.Storage.Write(data)
 	if err != nil {
 		http.Error(w, "Storage error", http.StatusInternalServerError)
 		return
@@ -125,7 +129,12 @@ func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
+	data := make(map[string]helpers.WebData)
 	value := idCookieValue(w, r)
+	data[value] = helpers.WebData{}
+	newentry := data[value]
+	newentry.Key = ""
+	newentry.Short = make(map[string]string)
 	type sURL struct {
 		ShortURL string `json:"result"`
 	}
@@ -152,11 +161,9 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	short := rand.RandStringRunes(8)
-	if entry, ok := db.Data[value]; ok {
-		entry.Short[short] = longURL.LongURL
-		db.Data[value] = entry
-	}
-	err = db.Storage.Write(db.Data)
+	newentry.Short[short] = longURL.LongURL
+	data[value] = newentry
+	err = db.Storage.Write(data)
 	if err != nil {
 		http.Error(w, "Storage error", http.StatusInternalServerError)
 		return
@@ -185,13 +192,14 @@ func (db app) getHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+	data, err := db.Storage.ReadByTag(p)
 	var count int
-	for _, entry := range db.Data {
-		if url, ok := entry.Short[p]; ok {
-			w.Header().Set("Location", url)
+	for i := range data {
+		if i == p {
+			count++
+			w.Header().Set("Location", data[i])
 			w.WriteHeader(http.StatusTemporaryRedirect)
 			w.Write([]byte{})
-			count++
 		}
 	}
 	if count == 0 {
@@ -235,8 +243,6 @@ func TimeTracer(next http.Handler) http.Handler {
 }
 
 func (db *app) addCookie(w http.ResponseWriter, name, value string, key string) {
-	log.Println(db.Data)
-	log.Println(name, value, key)
 	h := hmac.New(sha256.New, []byte(key))
 	h.Write([]byte(value))
 	signed := h.Sum(nil)
@@ -246,14 +252,14 @@ func (db *app) addCookie(w http.ResponseWriter, name, value string, key string) 
 		Value:  value + sign,
 		MaxAge: 0,
 	}
-	if entry, ok := db.Data[value]; ok {
-		entry.Key = key
-		db.Data[value] = entry
-	} else {
-		var entry helpers.WebData
-		entry.Key = key
-		entry.Short = make(map[string]string)
-		db.Data[value] = entry
+	data := make(map[string]helpers.WebData)
+	entry := helpers.WebData{}
+	entry.Key = key
+	entry.Short = make(map[string]string)
+	data[value] = entry
+	err := db.Storage.Write(data)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 	http.SetCookie(w, &cookie)
 }
@@ -264,7 +270,8 @@ func (db *app) checkCookie(cookie *http.Cookie) bool {
 	if err != nil {
 		log.Println(err)
 	}
-	h := hmac.New(sha256.New, []byte(db.Data[data].Key))
+	checkdata, err := db.Storage.ReadByCookie(data)
+	h := hmac.New(sha256.New, []byte(checkdata[data].Key))
 	h.Write([]byte(data))
 	signed := h.Sum(nil)
 	return hmac.Equal(sign, signed)

@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+*.sql
 
 # Test binary, built with `go test -c`
 *.test
@@ -21,5 +22,8 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+.sql
 cmd/shortener/storage
 internal/app/storage/createme.txt
+
+internal/app/storage/database_integration_test.go
