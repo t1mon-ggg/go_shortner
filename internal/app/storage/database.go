@@ -188,16 +188,21 @@ func (s *Postgresql) Write(data helpers.Data) error {
 		if err != nil {
 			return err
 		}
-		log.Println("Searc cookie result:", count)
+		log.Println("Search cookie result:", count)
 		if count == 0 {
 			ctx2, cancel2 := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel2()
 			query := fmt.Sprintf(writeIDs, i, data[i].Key)
 			log.Printf("Execuing \"%s\"\n", query)
-			_, err := s.db.ExecContext(ctx2, query)
+			result, err := s.db.ExecContext(ctx2, query)
 			if err != nil {
 				return err
 			}
+			affected, err := result.RowsAffected()
+			if err != nil {
+				return err
+			}
+			log.Printf("Executed query:\n%s\n has results:\nAffected rows: %d\n", query, affected)
 		}
 		if len(data[i].Short) != 0 {
 			shorts := data[i].Short
@@ -211,16 +216,21 @@ func (s *Postgresql) Write(data helpers.Data) error {
 				if err != nil {
 					return err
 				}
-				log.Println("Searc cookie result:", counttag)
+				log.Println("Search cookie result:", counttag)
 				if counttag == 0 {
 					ctx4, cancel4 := context.WithTimeout(context.Background(), 1*time.Second)
 					defer cancel4()
 					query := fmt.Sprintf(writeURLs, i, j, shorts[j])
 					log.Printf("Execuing \"%s\"\n", query)
-					_, err := s.db.ExecContext(ctx4, query)
+					result, err := s.db.ExecContext(ctx4, query)
 					if err != nil {
 						return err
 					}
+					affected, err := result.RowsAffected()
+					if err != nil {
+						return err
+					}
+					log.Printf("Executed query:\n%s\n has results:\nAffected rows: %d\n", query, affected)
 				}
 			}
 		}
