@@ -13,7 +13,7 @@ func TestOsVars_Read(t *testing.T) {
 	}{
 		{
 			name: "Test FILE_STORAGE_PATH",
-			want: "./storage",
+			want: "",
 		},
 		{
 			name: "Test SERVER_ADDRESS",
