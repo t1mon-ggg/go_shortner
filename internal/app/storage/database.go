@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -34,8 +35,8 @@ CACHE 1
   "Cookie" varchar(32) COLLATE "pg_catalog"."default" NOT NULL,
   CONSTRAINT "URLs_pk" PRIMARY KEY ("ID"),
   CONSTRAINT "ID" UNIQUE ("ID"),
-  CONSTRAINT "Short" UNIQUE ("Short")
-
+  CONSTRAINT "Short" UNIQUE ("Short"),
+  CONSTRAINT "Cookie" FOREIGN KEY ("Cookie") REFERENCES "IDs" ("Cookie") ON DELETE NO ACTION ON UPDATE NO ACTION
 )
 `
 	cookieSelectIDs  = `SELECT "Cookie", "Key" FROM "IDs" WHERE "Cookie"='%s'`
@@ -64,7 +65,7 @@ func NewPostgreSQL(conn string) (*Postgresql, error) {
 	if err != nil {
 		return nil, err
 	}
-	//log.Println("Successfull connection to PostgreSQL")
+	log.Println("Successfull connection to PostgreSQL")
 	err = db.create()
 	if err != nil {
 		return nil, err
@@ -99,16 +100,16 @@ func (c *Postgresql) create() error {
 
 //Ping - проверка состояния соединения с базой данных
 func (database *Postgresql) Ping() error {
-	//log.Println("Check connection to PostgreSQL")
+	log.Println("Check connection to PostgreSQL")
 	ctx := context.Background()
 	connection, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	err := database.db.PingContext(connection)
 	if err != nil {
-		//log.Println("Connection to PostgreSQL failed")
+		log.Println("Connection to PostgreSQL failed")
 		return err
 	}
-	//log.Println("Connection to PostgreSQL confirmed")
+	log.Println("Connection to PostgreSQL confirmed")
 	return nil
 }
 
@@ -124,11 +125,11 @@ func (database *Postgresql) Close() error {
 //ReadByCookie - чтение из базы данных
 func (s *Postgresql) ReadByCookie(cookie string) (helpers.Data, error) {
 	a := make(map[string]helpers.WebData)
-	//log.Println("Select from IDs")
+	log.Println("Select from IDs")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	query := fmt.Sprintf(cookieSelectIDs, cookie)
-	//log.Printf("Executing \"%s\"\n", query)
+	log.Printf("Executing \"%s\"\n", query)
 	var rowCookie, rowKey string
 	err := s.db.QueryRowContext(ctx, query).Scan(&rowCookie, &rowKey)
 	if err != nil {
@@ -140,7 +141,7 @@ func (s *Postgresql) ReadByCookie(cookie string) (helpers.Data, error) {
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	query = fmt.Sprintf(cookieSelectURLs, cookie)
-	//log.Printf("Executing \"%s\"\n", query)
+	log.Printf("Executing \"%s\"\n", query)
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -155,7 +156,7 @@ func (s *Postgresql) ReadByCookie(cookie string) (helpers.Data, error) {
 	}
 	entry.Short = shorts
 	a[rowCookie] = entry
-	//log.Println(a)
+	log.Println(a)
 	return a, nil
 }
 
@@ -165,7 +166,7 @@ func (s *Postgresql) ReadByTag(tag string) (map[string]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	query := fmt.Sprintf(tagSelect, tag)
-	//log.Printf("Executing \"%s\"\n", query)
+	log.Printf("Executing \"%s\"\n", query)
 	var short, long string
 	err := s.db.QueryRowContext(ctx, query).Scan(&short, &long)
 	if err != nil {
@@ -181,18 +182,18 @@ func (s *Postgresql) Write(data helpers.Data) error {
 		ctx1, cancel1 := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel1()
 		query := fmt.Sprintf(cookieSearch, i)
-		//log.Printf("Execuing \"%s\"\n", query)
+		log.Printf("Execuing \"%s\"\n", query)
 		var count int
 		err := s.db.QueryRowContext(ctx1, query).Scan(&count)
 		if err != nil {
 			return err
 		}
-		//log.Println("Searc cookie result:", count)
+		log.Println("Searc cookie result:", count)
 		if count == 0 {
 			ctx2, cancel2 := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel2()
 			query := fmt.Sprintf(writeIDs, i, data[i].Key)
-			//log.Printf("Execuing \"%s\"\n", query)
+			log.Printf("Execuing \"%s\"\n", query)
 			_, err := s.db.ExecContext(ctx2, query)
 			if err != nil {
 				return err
@@ -205,17 +206,17 @@ func (s *Postgresql) Write(data helpers.Data) error {
 				defer cancel3()
 				var counttag int
 				query := fmt.Sprintf(tagSearch, j)
-				//log.Printf("Execuing \"%s\"\n", query)
+				log.Printf("Execuing \"%s\"\n", query)
 				err := s.db.QueryRowContext(ctx3, query).Scan(&counttag)
 				if err != nil {
 					return err
 				}
-				//log.Println("Searc cookie result:", counttag)
+				log.Println("Searc cookie result:", counttag)
 				if counttag == 0 {
 					ctx4, cancel4 := context.WithTimeout(context.Background(), 1*time.Second)
 					defer cancel4()
 					query := fmt.Sprintf(writeURLs, i, j, shorts[j])
-					//log.Printf("Execuing \"%s\"\n", query)
+					log.Printf("Execuing \"%s\"\n", query)
 					_, err := s.db.ExecContext(ctx4, query)
 					if err != nil {
 						return err
