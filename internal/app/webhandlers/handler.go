@@ -184,8 +184,16 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 					http.Error(w, "Storage error", http.StatusInternalServerError)
 					return
 				}
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusConflict)
-				w.Write([]byte(fmt.Sprintf("%s/%s", db.Config.BaseURL, s)))
+				jbody := sURL{ShortURL: fmt.Sprintf("%s/%s", (*db).Config.BaseURL, s)}
+				abody, err := json.Marshal(jbody)
+				if err != nil {
+					log.Println("JSON Marshal error", err)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
+				w.Write(abody)
 				return
 			}
 		}
