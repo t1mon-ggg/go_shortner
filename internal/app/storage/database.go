@@ -17,33 +17,33 @@ import (
 
 const (
 	schemaSQL = `
-	CREATE TABLE IF NOT EXISTS "IDs" (
-		"Cookie" VARCHAR(32) NOT NULL UNIQUE PRIMARY KEY,
-		"Key" VARCHAR(64) NOT NULL
+	CREATE TABLE IF NOT EXISTS "ids" (
+		"cookie" VARCHAR(32) NOT NULL UNIQUE PRIMARY KEY,
+		"key" VARCHAR(64) NOT NULL
 	);
 	
-	CREATE TABLE IF NOT EXISTS "URLs" (
-	  "ID" int4 NOT NULL PRIMARY KEY UNIQUE GENERATED ALWAYS AS IDENTITY (
+	CREATE TABLE IF NOT EXISTS "urls" (
+	  "id" int4 NOT NULL PRIMARY KEY UNIQUE GENERATED ALWAYS AS IDENTITY (
 	INCREMENT 1
 	MINVALUE  1
 	MAXVALUE 2147483647
 	START 1
 	CACHE 1
 	),
-	  "Short" varchar(8) NOT NULL UNIQUE,
-	  "Long" varchar(255) NOT NULL UNIQUE,
-	  "Cookie" varchar(32)NOT NULL,
-		CONSTRAINT "Cookie" FOREIGN KEY ("Cookie") REFERENCES "IDs" ("Cookie") ON DELETE NO ACTION ON UPDATE NO ACTION
+	  "short" varchar(8) NOT NULL UNIQUE,
+	  "long" varchar(255) NOT NULL UNIQUE,
+	  "cookie" varchar(32)NOT NULL,
+		CONSTRAINT "cookie" FOREIGN KEY ("cookie") REFERENCES "ids" ("cookie") ON DELETE NO ACTION ON UPDATE NO ACTION
 	)
 `
-	cookieSelectIDs  = `SELECT "Cookie", "Key" FROM "IDs" WHERE "Cookie"='%s'`
-	cookieSelectURLs = `SELECT "Short", "Long" FROM "URLs" WHERE "Cookie"='%s'`
-	cookieSearch     = `SELECT COUNT("Cookie") FROM "IDs" WHERE "Cookie"='%s'`
-	tagSearch        = `SELECT COUNT("Short") FROM "URLs" WHERE "Short"='%s'`
-	tagSelect        = `SELECT "Short", "Long" FROM "URLs" WHERE "Short"='%s'`
-	urlSelect        = `SELECT "Short" FROM "URLs" WHERE "Long"='%s'`
-	writeIDs         = `INSERT INTO "IDs" ("Cookie", "Key") VALUES ('%s','%s')`
-	writeURLs        = `INSERT INTO "URLs" ("Cookie", "Short", "Long") VALUES ('%s','%s','%s')`
+	cookieSelectIDs  = `SELECT "cookie", "key" FROM "ids" WHERE "cookie"='%s'`
+	cookieSelectURLs = `SELECT "short", "long" FROM "urls" WHERE "cookie"='%s'`
+	cookieSearch     = `SELECT COUNT("cookie") FROM "ids" WHERE "cookie"='%s'`
+	tagSearch        = `SELECT COUNT("short") FROM "urls" WHERE "short"='%s'`
+	tagSelect        = `SELECT "short", "Long" FROM "urls" WHERE "short"='%s'`
+	urlSelect        = `SELECT "short" FROM "urls" WHERE "long"='%s'`
+	writeIDs         = `INSERT INTO "ids" ("cookie", "key") VALUES ('%s','%s')`
+	writeURLs        = `INSERT INTO "urls" ("cookie", "short", "long") VALUES ('%s','%s','%s')`
 	tagDelete        = ``
 	cookieDelete     = ``
 )
