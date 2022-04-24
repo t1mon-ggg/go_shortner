@@ -31,7 +31,6 @@ func checkFile(filename string) error {
 	if os.IsNotExist(err) {
 		f, err = os.Create(filename)
 		if err != nil {
-			log.Println("1111")
 			return err
 		}
 		f.Close()
@@ -72,12 +71,10 @@ func (f *FileDB) Ping() error {
 func (f *FileDB) readFile() error {
 	err := checkFile(f.Name)
 	if err != nil {
-		log.Println("2222")
 		return err
 	}
 	file, err := os.OpenFile(f.Name, os.O_RDONLY, 0777)
 	if err != nil {
-		log.Println("3333")
 		return err
 	}
 	f.file = file
@@ -88,12 +85,10 @@ func (f *FileDB) readFile() error {
 func (f *FileDB) rewriteFile() error {
 	err := checkFile(f.Name)
 	if err != nil {
-		log.Println("4444")
 		return err
 	}
 	file, err := os.OpenFile(f.Name, os.O_WRONLY|os.O_TRUNC, 0777)
 	if err != nil {
-		log.Println("5555")
 		return err
 	}
 	f.file = file
@@ -145,13 +140,28 @@ func (f *FileDB) readAllFile() (helpers.Data, error) {
 	for scanner.Scan() {
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
-			log.Println("9999")
 			return nil, err
 		}
 	}
 	f.Close()
 	f.file = nil
 	return m, nil
+}
+
+//TagByURL - поиск URL
+func (f *FileDB) TagByURL(s string) (string, error) {
+	db, err := f.readAllFile()
+	if err != nil {
+		return "", err
+	}
+	for i := range db {
+		for j, url := range db[i].Short {
+			if url == s {
+				return j, nil
+			}
+		}
+	}
+	return "", nil
 }
 
 //ReadByCookie - чтение из файла
@@ -162,7 +172,6 @@ func (f *FileDB) ReadByCookie(s string) (helpers.Data, error) {
 	for scanner.Scan() {
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
-			log.Println("0000")
 			return nil, err
 		}
 	}
@@ -185,7 +194,6 @@ func (f *FileDB) ReadByTag(s string) (map[string]string, error) {
 	for scanner.Scan() {
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
-			log.Println("!!!!")
 			return nil, err
 		}
 	}

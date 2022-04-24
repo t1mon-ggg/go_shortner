@@ -3,10 +3,13 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
+	"github.com/jackc/pgerrcode"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
@@ -14,38 +17,31 @@ import (
 
 const (
 	schemaSQL = `
-CREATE TABLE IF NOT EXISTS "IDs" (
-	"Cookie" VARCHAR(32) NOT NULL,
-	"Key" VARCHAR(64) NOT NULL,
-	CONSTRAINT "IDs_pk" PRIMARY KEY ("Cookie"),
-	CONSTRAINT "Cookie" UNIQUE ("Cookie")
-) WITH (
-  OIDS=FALSE
-);
-CREATE TABLE IF NOT EXISTS "URLs" (
-  "ID" int4 NOT NULL GENERATED ALWAYS AS IDENTITY (
-INCREMENT 1
-MINVALUE  1
-MAXVALUE 2147483647
-START 1
-CACHE 1
-),
-  "Short" varchar(8) COLLATE "pg_catalog"."default" NOT NULL,
-  "Long" varchar(255) COLLATE "pg_catalog"."default" NOT NULL,
-  "Cookie" varchar(32) COLLATE "pg_catalog"."default" NOT NULL,
-  CONSTRAINT "URLs_pk" PRIMARY KEY ("ID"),
-  CONSTRAINT "ID" UNIQUE ("ID"),
-  CONSTRAINT "Short" UNIQUE ("Short"),
-  CONSTRAINT "Long" UNIQUE ("Long"),
-  CONSTRAINT "Cookie" FOREIGN KEY ("Cookie") REFERENCES "IDs" ("Cookie") ON DELETE NO ACTION ON UPDATE NO ACTION
-)
+	CREATE TABLE IF NOT EXISTS "IDs" (
+		"Cookie" VARCHAR(32) NOT NULL UNIQUE PRIMARY KEY,
+		"Key" VARCHAR(64) NOT NULL
+	);
+	
+	CREATE TABLE IF NOT EXISTS "URLs" (
+	  "ID" int4 NOT NULL PRIMARY KEY UNIQUE GENERATED ALWAYS AS IDENTITY (
+	INCREMENT 1
+	MINVALUE  1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	),
+	  "Short" varchar(8) NOT NULL UNIQUE,
+	  "Long" varchar(255) NOT NULL UNIQUE,
+	  "Cookie" varchar(32)NOT NULL,
+		CONSTRAINT "Cookie" FOREIGN KEY ("Cookie") REFERENCES "IDs" ("Cookie") ON DELETE NO ACTION ON UPDATE NO ACTION
+	)
 `
 	cookieSelectIDs  = `SELECT "Cookie", "Key" FROM "IDs" WHERE "Cookie"='%s'`
 	cookieSelectURLs = `SELECT "Short", "Long" FROM "URLs" WHERE "Cookie"='%s'`
 	cookieSearch     = `SELECT COUNT("Cookie") FROM "IDs" WHERE "Cookie"='%s'`
 	tagSearch        = `SELECT COUNT("Short") FROM "URLs" WHERE "Short"='%s'`
 	tagSelect        = `SELECT "Short", "Long" FROM "URLs" WHERE "Short"='%s'`
-	urlSelect        = `SELECT "Short", "Long" FROM "URLs" WHERE "Long"='%s'`
+	urlSelect        = `SELECT "Short" FROM "URLs" WHERE "Long"='%s'`
 	writeIDs         = `INSERT INTO "IDs" ("Cookie", "Key") VALUES ('%s','%s')`
 	writeURLs        = `INSERT INTO "URLs" ("Cookie", "Short", "Long") VALUES ('%s','%s','%s')`
 	tagDelete        = ``
@@ -159,6 +155,19 @@ func (s *Postgresql) ReadByCookie(cookie string) (helpers.Data, error) {
 	return a, nil
 }
 
+//ReadByURL - чтение из базы данных
+func (s *Postgresql) TagByURL(url string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	query := fmt.Sprintf(urlSelect, url)
+	var short string
+	err := s.db.QueryRowContext(ctx, query).Scan(&short)
+	if err != nil {
+		return "", err
+	}
+	return short, nil
+}
+
 //ReadByTag - чтение из базы данных
 func (s *Postgresql) ReadByTag(tag string) (map[string]string, error) {
 	m := make(map[string]string)
@@ -223,6 +232,11 @@ func (s *Postgresql) Write(data helpers.Data) error {
 					log.Printf("Execuing \"%s\"\n", query)
 					result, err := s.db.ExecContext(ctx4, query)
 					if err != nil {
+						if driverErr, ok := err.(*pq.Error); ok {
+							if pgerrcode.UniqueViolation == driverErr.Code {
+								return errors.New("Not UNIQUE URL")
+							}
+						}
 						return err
 					}
 					affected, err := result.RowsAffected()

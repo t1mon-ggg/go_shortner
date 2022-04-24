@@ -38,7 +38,7 @@ func (cfg *Vars) ReadEnv() error {
 	if c.ServerAddress != "" {
 		cfg.ServerAddress = c.ServerAddress
 	}
-	if c.Database != "" {
+	if c.FileStoragePath != "" {
 		cfg.FileStoragePath = c.FileStoragePath
 	}
 	if c.Database != "" {

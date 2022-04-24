@@ -70,6 +70,18 @@ func (db MemDB) Write(m helpers.Data) error {
 }
 
 //ReadByCookie - чтение из памяти по cookie
+func (db MemDB) TagByURL(s string) (string, error) {
+	for i := range db {
+		for j, url := range db[i].Short {
+			if url == s {
+				return j, nil
+			}
+		}
+	}
+	return "", nil
+}
+
+//ReadByCookie - чтение из памяти по cookie
 func (db MemDB) ReadByCookie(s string) (helpers.Data, error) {
 	var err = errors.New("DB not initialized")
 	if db == nil {

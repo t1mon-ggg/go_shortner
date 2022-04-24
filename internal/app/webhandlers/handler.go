@@ -27,7 +27,6 @@ import (
 type app struct {
 	Storage storage.Database
 	Config  *config.Vars
-	//Data    helpers.Data
 }
 
 //NewData - создание пустого массива данных
@@ -122,6 +121,18 @@ func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
 	data[value] = entry
 	err = db.Storage.Write(data)
 	if err != nil {
+		if err != nil {
+			if err.Error() == "Not UNIQUE URL" {
+				s, err := db.Storage.TagByURL(slongURL)
+				if err != nil {
+					http.Error(w, "Storage error", http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusConflict)
+				w.Write([]byte(fmt.Sprintf("%s/%s", db.Config.BaseURL, s)))
+				return
+			}
+		}
 		http.Error(w, "Storage error", http.StatusInternalServerError)
 		return
 	}
@@ -166,6 +177,18 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 	data[value] = newentry
 	err = db.Storage.Write(data)
 	if err != nil {
+		if err != nil {
+			if err.Error() == "Not UNIQUE URL" {
+				s, err := db.Storage.TagByURL(longURL.LongURL)
+				if err != nil {
+					http.Error(w, "Storage error", http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusConflict)
+				w.Write([]byte(fmt.Sprintf("%s/%s", db.Config.BaseURL, s)))
+				return
+			}
+		}
 		http.Error(w, "Storage error", http.StatusInternalServerError)
 		return
 	}
@@ -189,12 +212,60 @@ func (db *app) postAPIBatch(w http.ResponseWriter, r *http.Request) {
 		Correlation string `json:"correlation_id"`
 		Short       string `json:"short_url"`
 	}
-	data := make(map[string]helpers.WebData)
 	value := idCookieValue(w, r)
-	data[value] = helpers.WebData{}
-	newentry := data[value]
-	newentry.Key = ""
-	newentry.Short = make(map[string]string)
+	out := make([]output, 0)
+	defer r.Body.Close()
+	ctype := r.Header.Get("Content-Type")
+	if ctype != "application/json" {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	in := []input{}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println("Body Error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	err = json.Unmarshal(body, &in)
+	if err != nil {
+		log.Println("JSON Unmarshal error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	for i := range in {
+		data := helpers.Data(make(map[string]helpers.WebData))
+		entry := helpers.WebData{}
+		entry.Key = ""
+		entry.Short = make(map[string]string)
+		short := rand.RandStringRunes(8)
+		entry.Short[short] = in[i].Long
+		data[value] = entry
+		err := db.Storage.Write(data)
+		if err != nil {
+			if err.Error() == "Not UNIQUE URL" {
+				s, err := db.Storage.TagByURL(in[i].Long)
+				if err != nil {
+					http.Error(w, "Storage error", http.StatusInternalServerError)
+					return
+				}
+				out = append(out, output{Correlation: in[i].Correlation, Short: fmt.Sprintf("%s/%s", (*db).Config.BaseURL, s)})
+			} else {
+				http.Error(w, "Storage error", http.StatusInternalServerError)
+				return
+			}
+		} else {
+			out = append(out, output{Correlation: in[i].Correlation, Short: fmt.Sprintf("%s/%s", (*db).Config.BaseURL, short)})
+		}
+	}
+	batch, err := json.Marshal(out)
+	if err != nil {
+		http.Error(w, "Answer error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(batch)
 }
 
 func (db app) getHandler(w http.ResponseWriter, r *http.Request) {

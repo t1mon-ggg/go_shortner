@@ -1,0 +1,98 @@
+package storage
+
+import (
+	"database/sql"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
+)
+
+func Test_integration_open(t *testing.T) {
+	db := Postgresql{Conn: "postgresql://postgres:admin@127.0.0.1:5432/praktikum?sslmode=disable"}
+	err := db.open()
+	require.NoError(t, err)
+}
+
+func Test_integration_create(t *testing.T) {
+	db := Postgresql{Conn: "postgresql://postgres:admin@127.0.0.1:5432/testCreate?sslmode=disable"}
+	var err error
+	db.db, err = sql.Open("postgres", db.Conn)
+	require.NoError(t, err)
+	err = db.create()
+	require.NoError(t, err)
+}
+
+func Test_integration_Close(t *testing.T) {
+	db := Postgresql{Conn: "postgresql://postgres:admin@127.0.0.1:5432/praktikum?sslmode=disable"}
+	err := db.open()
+	require.NoError(t, err)
+	err = db.Close()
+	require.NoError(t, err)
+	err = db.Ping()
+	require.Error(t, err)
+}
+func Test_DB_integration_Ping(t *testing.T) {
+	db, err := NewPostgreSQL("postgresql://postgres:admin@127.0.0.1:5432/praktikum?sslmode=disable")
+	require.NoError(t, err)
+	err = db.Ping()
+	require.NoError(t, err)
+}
+
+func Test_DB_integration_ReadByCookie(t *testing.T) {
+	db, err := NewPostgreSQL("postgresql://postgres:admin@127.0.0.1:5432/praktikum?sslmode=disable")
+	require.NoError(t, err)
+	e := make(map[string]helpers.WebData)
+	e["cookie2"] = helpers.WebData{
+		Key: "secret-key2",
+		Short: map[string]string{
+			"ABCDabcd": "http://example2.org",
+			"abcdabcd": "http://example3.org",
+		},
+	}
+	expected := helpers.Data(e)
+	data, err := db.ReadByCookie("cookie2")
+	require.NoError(t, err)
+	require.Equal(t, expected, data)
+}
+
+func Test_DB_integration_ReadByTag(t *testing.T) {
+	db, err := NewPostgreSQL("postgresql://postgres:admin@127.0.0.1:5432/praktikum?sslmode=disable")
+	require.NoError(t, err)
+	expected := map[string]string{
+		"ABCDabcd": "http://example2.org",
+	}
+	data, err := db.ReadByTag("ABCDabcd")
+	require.NoError(t, err)
+	require.Equal(t, expected, data)
+}
+
+func Test_DB_integration_Write(t *testing.T) {
+	db, err := NewPostgreSQL("postgresql://postgres:admin@127.0.0.1:5432/praktikum?sslmode=disable")
+	require.NoError(t, err)
+	e := make(map[string]helpers.WebData)
+	e["cookie2"] = helpers.WebData{
+		Key: "secret-key2",
+		Short: map[string]string{
+			"ABCDabcd": "http://example2.org",
+			"abcdabcd": "http://example3.org",
+			"AbCdAbCd": "http://example4.org",
+		},
+	}
+	expected := helpers.Data(e)
+	err = db.Write(expected)
+	require.NoError(t, err)
+	val, err := db.ReadByCookie("cookie2")
+	require.Equal(t, expected, val)
+	delete(e, "cookie2")
+	e["cookie20"] = helpers.WebData{
+		Key: "secret-key20",
+		Short: map[string]string{
+			"12345679": "http://example5.org",
+		},
+	}
+	err = db.Write(expected)
+	require.NoError(t, err)
+	val, err = db.ReadByCookie("cookie20")
+	require.Equal(t, expected, val)
+}
