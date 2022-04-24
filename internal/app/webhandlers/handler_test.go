@@ -27,7 +27,7 @@ func newServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *app) {
 	jar, err := cookiejar.New(nil)
 	require.NoError(t, err)
 	db := NewApp()
-	db.Storage, err = storage.NewPostgreSQL("postgresql://postgres:admin@127.0.0.1:5432/praktikum?sslmode=disable")
+	db.Storage = storage.NewMemDB()
 	require.NoError(t, err)
 	db.Config = config.NewConfig()
 	require.NoError(t, err)
@@ -497,8 +497,8 @@ func Test_UserURLs(t *testing.T) {
 				require.Equal(t, http.StatusCreated, response.StatusCode)
 				response, body := testRequest(t, ts, jar, http.MethodGet, tt.args.query, tt.args.body, tt.args.ctype)
 				defer response.Body.Close()
-				require.Equal(t, "application/json", response.Header.Get("Content-Type"))
 				require.Equal(t, http.StatusOK, response.StatusCode)
+				require.Equal(t, "application/json", response.Header.Get("Content-Type"))
 				type answer struct {
 					Short    string `json:"short_url"`
 					Original string `json:"original_url"`

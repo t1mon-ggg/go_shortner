@@ -3,13 +3,10 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/jackc/pgerrcode"
-	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
@@ -232,11 +229,7 @@ func (s *Postgresql) Write(data helpers.Data) error {
 					log.Printf("Execuing \"%s\"\n", query)
 					result, err := s.db.ExecContext(ctx4, query)
 					if err != nil {
-						if driverErr, ok := err.(*pq.Error); ok {
-							if pgerrcode.UniqueViolation == driverErr.Code {
-								return errors.New("Not UNIQUE URL")
-							}
-						}
+						err = helpers.UniqueViolationError(err)
 						return err
 					}
 					affected, err := result.RowsAffected()

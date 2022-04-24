@@ -90,7 +90,7 @@ func (db *app) userURLs(w http.ResponseWriter, r *http.Request) {
 	for i, content := range data[value].Short {
 		a = append(a, answer{Short: fmt.Sprintf("%s/%s", db.Config.BaseURL, i), Original: content})
 	}
-	d, err := json.MarshalIndent(a, "", "\t")
+	d, err := json.Marshal(a)
 	if err != nil {
 		http.Error(w, "Json Error", http.StatusInternalServerError)
 		return
@@ -122,7 +122,7 @@ func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.Storage.Write(data)
 	if err != nil {
 		if err != nil {
-			if err.Error() == "Not UNIQUE URL" {
+			if err.Error() == "not uniquie url" {
 				s, err := db.Storage.TagByURL(slongURL)
 				if err != nil {
 					http.Error(w, "Storage error", http.StatusInternalServerError)

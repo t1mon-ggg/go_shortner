@@ -3,6 +3,7 @@ package storage
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 
@@ -116,7 +117,28 @@ func (f *FileDB) Write(m helpers.Data) error {
 	if err != nil {
 		return err
 	}
-	db = mergeData(db, m)
+	for i := range m {
+		entry := m[i]
+		if len(entry.Short) != 0 {
+			for j := range entry.Short {
+				if f.checkURLUnique(entry.Short[j]) {
+					return errors.New("not unique url")
+				}
+				todo := make(map[string]helpers.WebData)
+				newentry := helpers.WebData{}
+				newentry.Key = entry.Key
+				url := make(map[string]string)
+				url[j] = entry.Short[j]
+				newentry.Short = url
+				todo[i] = newentry
+				db = mergeData(db, todo)
+			}
+		} else {
+			todo := make(map[string]helpers.WebData)
+			todo[i] = entry
+			db = mergeData(db, todo)
+		}
+	}
 	f.rewriteFile()
 	encoder := f.getCoder()
 	for i := range db {
@@ -130,6 +152,18 @@ func (f *FileDB) Write(m helpers.Data) error {
 	f.Close()
 	f.file = nil
 	return nil
+}
+
+func (f *FileDB) checkURLUnique(s string) bool {
+	db, _ := f.readAllFile()
+	for i := range db {
+		for j := range db[i].Short {
+			if db[i].Short[j] == s {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 //ReadByCookie - чтение из файла

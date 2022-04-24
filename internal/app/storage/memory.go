@@ -65,11 +65,44 @@ func (db MemDB) Write(m helpers.Data) error {
 	if m == nil {
 		return err
 	}
-	db = mergeData(db, m)
+	for i := range m {
+		entry := m[i]
+		if len(entry.Short) != 0 {
+			for j := range entry.Short {
+				if db.checkURLUnique(entry.Short[j]) {
+					return errors.New("not unique url")
+				}
+				todo := make(map[string]helpers.WebData)
+				newentry := helpers.WebData{}
+				newentry.Key = entry.Key
+				url := make(map[string]string)
+				url[j] = entry.Short[j]
+				newentry.Short = url
+				todo[i] = newentry
+				db = mergeData(db, todo)
+			}
+		} else {
+			todo := make(map[string]helpers.WebData)
+			todo[i] = entry
+			db = mergeData(db, todo)
+		}
+
+	}
 	return nil
 }
 
-//ReadByCookie - чтение из памяти по cookie
+func (db MemDB) checkURLUnique(s string) bool {
+	for i := range db {
+		for j := range db[i].Short {
+			if db[i].Short[j] == s {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+//TagByURL - чтение из памяти по cookie
 func (db MemDB) TagByURL(s string) (string, error) {
 	for i := range db {
 		for j, url := range db[i].Short {
@@ -83,7 +116,7 @@ func (db MemDB) TagByURL(s string) (string, error) {
 
 //ReadByCookie - чтение из памяти по cookie
 func (db MemDB) ReadByCookie(s string) (helpers.Data, error) {
-	var err = errors.New("DB not initialized")
+	var err = errors.New("db not initialized")
 	if db == nil {
 		return nil, err
 	}
