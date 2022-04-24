@@ -40,7 +40,7 @@ const (
 	cookieSelectURLs = `SELECT "short", "long" FROM "urls" WHERE "cookie"='%s'`
 	cookieSearch     = `SELECT COUNT("cookie") FROM "ids" WHERE "cookie"='%s'`
 	tagSearch        = `SELECT COUNT("short") FROM "urls" WHERE "short"='%s'`
-	tagSelect        = `SELECT "short", "Long" FROM "urls" WHERE "short"='%s'`
+	tagSelect        = `SELECT "short", "long" FROM "urls" WHERE "short"='%s'`
 	urlSelect        = `SELECT "short" FROM "urls" WHERE "long"='%s'`
 	writeIDs         = `INSERT INTO "ids" ("cookie", "key") VALUES ('%s','%s')`
 	writeURLs        = `INSERT INTO "urls" ("cookie", "short", "long") VALUES ('%s','%s','%s')`
