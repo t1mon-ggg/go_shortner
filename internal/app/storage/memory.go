@@ -2,8 +2,7 @@ package storage
 
 import (
 	"errors"
-
-	"golang.org/x/exp/maps"
+	"reflect"
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
 )
@@ -16,9 +15,48 @@ func NewMemDB() MemDB {
 	return s
 }
 
+func mergeURLs(old, new map[string]string) map[string]string {
+	if reflect.DeepEqual(old, new) {
+		return old
+	}
+	for i := range new {
+		if _, ok := old[i]; ok {
+			if reflect.DeepEqual(old[i], new[i]) {
+				continue
+			}
+		} else {
+			old[i] = new[i]
+		}
+	}
+	return old
+}
+
+func mergeData(old, new map[string]helpers.WebData) map[string]helpers.WebData {
+	if reflect.DeepEqual(old, new) {
+		return old
+	}
+	for i := range new {
+		if _, ok := old[i]; ok {
+			if reflect.DeepEqual(old[i], new[i]) {
+				continue
+			} else {
+				entry := old[i]
+				newentry := new[i]
+				if newentry.Key != "" && newentry.Key != entry.Key {
+					entry.Key = newentry.Key
+				}
+				entry.Short = mergeURLs(entry.Short, newentry.Short)
+				old[i] = entry
+			}
+		} else {
+			old[i] = new[i]
+		}
+	}
+	return old
+}
+
 //Write - добавление данных в память
 func (db MemDB) Write(m helpers.Data) error {
-	mm := MemDB(m)
 	var err = errors.New("DB not initialized")
 	if db == nil {
 		return err
@@ -27,18 +65,7 @@ func (db MemDB) Write(m helpers.Data) error {
 	if m == nil {
 		return err
 	}
-	for i := range m {
-		if !maps.Equal(db[i].Short, mm[i].Short) {
-			maps.Copy(mm[i].Short, db[i].Short)
-			e1 := mm[i]
-			e2 := db[i]
-			if e2.Key != "" {
-				e1.Key = e2.Key
-			}
-			mm[i] = e1
-		}
-	}
-	maps.Copy(db, mm)
+	db = mergeData(db, m)
 	return nil
 }
 

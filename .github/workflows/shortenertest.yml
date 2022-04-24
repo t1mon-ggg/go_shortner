@@ -10,7 +10,7 @@ jobs:
 
   shortenertest:
     runs-on: ubuntu-latest
-    container: golang:1.18
+    container: golang:1.17
 
     services:
       postgres:

@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
-	"golang.org/x/exp/maps"
 )
 
 //FileDB - структура для работы с фаловым хранилищем данных
@@ -120,20 +119,9 @@ func (f *FileDB) Close() error {
 func (f *FileDB) Write(m helpers.Data) error {
 	db, err := f.readAllFile()
 	if err != nil {
-		log.Println("7777")
 		return err
 	}
-	for i := range m {
-		if !maps.Equal(db[i].Short, m[i].Short) {
-			maps.Copy(m[i].Short, db[i].Short)
-			e1 := m[i]
-			e2 := db[i]
-			e1.Key = e2.Key
-			m[i] = e1
-		}
-	}
-	maps.Copy(db, m)
-
+	db = mergeData(db, m)
 	f.rewriteFile()
 	encoder := f.getCoder()
 	for i := range db {
@@ -141,7 +129,6 @@ func (f *FileDB) Write(m helpers.Data) error {
 		wr[i] = db[i]
 		err := encoder.Encode(wr)
 		if err != nil {
-			log.Println("8888")
 			return err
 		}
 	}

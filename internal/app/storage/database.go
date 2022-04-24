@@ -36,6 +36,7 @@ CACHE 1
   CONSTRAINT "URLs_pk" PRIMARY KEY ("ID"),
   CONSTRAINT "ID" UNIQUE ("ID"),
   CONSTRAINT "Short" UNIQUE ("Short"),
+  CONSTRAINT "Long" UNIQUE ("Long"),
   CONSTRAINT "Cookie" FOREIGN KEY ("Cookie") REFERENCES "IDs" ("Cookie") ON DELETE NO ACTION ON UPDATE NO ACTION
 )
 `
@@ -43,14 +44,12 @@ CACHE 1
 	cookieSelectURLs = `SELECT "Short", "Long" FROM "URLs" WHERE "Cookie"='%s'`
 	cookieSearch     = `SELECT COUNT("Cookie") FROM "IDs" WHERE "Cookie"='%s'`
 	tagSearch        = `SELECT COUNT("Short") FROM "URLs" WHERE "Short"='%s'`
-	urlSearch        = `SELECT COUNT("Long") FROM "URLs" WHERE "Long"='%s'`
 	tagSelect        = `SELECT "Short", "Long" FROM "URLs" WHERE "Short"='%s'`
 	urlSelect        = `SELECT "Short", "Long" FROM "URLs" WHERE "Long"='%s'`
 	writeIDs         = `INSERT INTO "IDs" ("Cookie", "Key") VALUES ('%s','%s')`
 	writeURLs        = `INSERT INTO "URLs" ("Cookie", "Short", "Long") VALUES ('%s','%s','%s')`
 	tagDelete        = ``
 	cookieDelete     = ``
-	urlDelete        = ``
 )
 
 type Postgresql struct {

@@ -50,6 +50,7 @@ func (db *app) Router(r chi.Router) {
 	r.Get("/api/user/urls", db.userURLs)
 	r.Post("/", db.postHandler)
 	r.Post("/api/shorten", db.postAPIHandler)
+	r.Post("/api/shorten/batch", db.postAPIBatch)
 	r.MethodNotAllowed(otherHandler)
 }
 
@@ -178,6 +179,22 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(abody)
+}
+func (db *app) postAPIBatch(w http.ResponseWriter, r *http.Request) {
+	type input struct {
+		Correlation string `json:"correlation_id"`
+		Long        string `json:"original_url"`
+	}
+	type output struct {
+		Correlation string `json:"correlation_id"`
+		Short       string `json:"short_url"`
+	}
+	data := make(map[string]helpers.WebData)
+	value := idCookieValue(w, r)
+	data[value] = helpers.WebData{}
+	newentry := data[value]
+	newentry.Key = ""
+	newentry.Short = make(map[string]string)
 }
 
 func (db app) getHandler(w http.ResponseWriter, r *http.Request) {
