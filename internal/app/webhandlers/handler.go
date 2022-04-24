@@ -174,26 +174,25 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 	newentry.Short[short] = longURL.LongURL
 	data[value] = newentry
 	err = db.Storage.Write(data)
+
 	if err != nil {
-		if err != nil {
-			if err.Error() == "not uniquie url" {
-				s, err := db.Storage.TagByURL(longURL.LongURL)
-				if err != nil {
-					http.Error(w, "Storage error", http.StatusInternalServerError)
-					return
-				}
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusConflict)
-				jbody := sURL{ShortURL: fmt.Sprintf("%s/%s", (*db).Config.BaseURL, s)}
-				abody, err := json.Marshal(jbody)
-				if err != nil {
-					log.Println("JSON Marshal error", err)
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
-					return
-				}
-				w.Write(abody)
+		if err.Error() == "not uniquie url" {
+			s, err := db.Storage.TagByURL(longURL.LongURL)
+			if err != nil {
+				http.Error(w, "Storage error", http.StatusInternalServerError)
 				return
 			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			jbody := sURL{ShortURL: fmt.Sprintf("%s/%s", (*db).Config.BaseURL, s)}
+			abody, err := json.Marshal(jbody)
+			if err != nil {
+				log.Println("JSON Marshal error", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			w.Write(abody)
+			return
 		}
 		http.Error(w, "Storage error", http.StatusInternalServerError)
 		return
