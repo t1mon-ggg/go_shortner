@@ -10,8 +10,7 @@ import (
 type MemDB map[string]helpers.WebData
 
 func NewMemDB() MemDB {
-	var s MemDB
-	s = make(map[string]helpers.WebData)
+	s := make(map[string]helpers.WebData)
 	return s
 }
 
@@ -57,11 +56,11 @@ func mergeData(old, new map[string]helpers.WebData) map[string]helpers.WebData {
 
 //Write - добавление данных в память
 func (db MemDB) Write(m helpers.Data) error {
-	var err = errors.New("DB not initialized")
+	var err = errors.New("db not initialized")
 	if db == nil {
 		return err
 	}
-	err = errors.New("Invalid input data")
+	err = errors.New("invalid input data")
 	if m == nil {
 		return err
 	}
@@ -131,7 +130,7 @@ func (db MemDB) ReadByCookie(s string) (helpers.Data, error) {
 
 //ReadByCookie - чтение из памяти по cookie
 func (db MemDB) ReadByTag(s string) (map[string]string, error) {
-	var err = errors.New("DB not initialized")
+	var err = errors.New("db not initialized")
 	if db == nil {
 		return nil, err
 	}
@@ -148,7 +147,7 @@ func (db MemDB) ReadByTag(s string) (map[string]string, error) {
 
 //Close - освобождение области данных
 func (db MemDB) Close() error {
-	err := errors.New("DB not initialized")
+	err := errors.New("db not initialized")
 	if db == nil {
 		return err
 	}
@@ -160,7 +159,7 @@ func (db MemDB) Close() error {
 
 //Ping - проверка наличия в памяти области данных
 func (db MemDB) Ping() error {
-	err := errors.New("DB not initialized")
+	err := errors.New("db not initialized")
 	if db == nil {
 		return err
 	}

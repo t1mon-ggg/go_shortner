@@ -109,11 +109,9 @@ func Test_mergeData(t *testing.T) {
 			"87654321": "http://example7.org",
 		},
 	}
-	old = map[string]helpers.WebData{
-		"cookie1": cookie1,
-		"cookie2": cookie2,
-		"cookie4": cookie4,
-	}
+	old["cookie1"] = cookie1
+	old["cookie2"] = cookie2
+	old["cookie4"] = cookie4
 	newcookie1 := helpers.WebData{
 		Key: "secret-key1",
 		Short: map[string]string{
@@ -136,12 +134,10 @@ func Test_mergeData(t *testing.T) {
 		Key:   "secret-key5",
 		Short: map[string]string{},
 	}
-	new = map[string]helpers.WebData{
-		"cookie1": newcookie1,
-		"cookie2": newcookie2,
-		"cookie3": newcookie3,
-		"cookie5": newcookie5,
-	}
+	new["cookie1"] = newcookie1
+	new["cookie2"] = newcookie2
+	new["cookie3"] = newcookie3
+	new["cookie5"] = newcookie5
 	result := make(map[string]helpers.WebData)
 	rcookie1 := helpers.WebData{
 		Key: "secret-key1",
@@ -170,13 +166,11 @@ func Test_mergeData(t *testing.T) {
 			"87654321": "http://example7.org",
 		},
 	}
-	result = map[string]helpers.WebData{
-		"cookie1": rcookie1,
-		"cookie2": rcookie2,
-		"cookie3": rcookie3,
-		"cookie4": rcookie4,
-		"cookie5": newcookie5,
-	}
+	result["cookie1"] = rcookie1
+	result["cookie2"] = rcookie2
+	result["cookie3"] = rcookie3
+	result["cookie4"] = rcookie4
+	result["cookie5"] = newcookie5
 	data := mergeData(old, new)
 	require.Equal(t, result, data)
 }

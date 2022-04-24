@@ -121,17 +121,15 @@ func (db *app) postHandler(w http.ResponseWriter, r *http.Request) {
 	data[value] = entry
 	err = db.Storage.Write(data)
 	if err != nil {
-		if err != nil {
-			if err.Error() == "not uniquie url" {
-				s, err := db.Storage.TagByURL(slongURL)
-				if err != nil {
-					http.Error(w, "Storage error", http.StatusInternalServerError)
-					return
-				}
-				w.WriteHeader(http.StatusConflict)
-				w.Write([]byte(fmt.Sprintf("%s/%s", db.Config.BaseURL, s)))
+		if err.Error() == "not uniquie url" {
+			s, err := db.Storage.TagByURL(slongURL)
+			if err != nil {
+				http.Error(w, "Storage error", http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(fmt.Sprintf("%s/%s", db.Config.BaseURL, s)))
+			return
 		}
 		http.Error(w, "Storage error", http.StatusInternalServerError)
 		return
@@ -178,7 +176,7 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.Storage.Write(data)
 	if err != nil {
 		if err != nil {
-			if err.Error() == "Not UNIQUE URL" {
+			if err.Error() == "not uniquie url" {
 				s, err := db.Storage.TagByURL(longURL.LongURL)
 				if err != nil {
 					http.Error(w, "Storage error", http.StatusInternalServerError)
@@ -251,7 +249,7 @@ func (db *app) postAPIBatch(w http.ResponseWriter, r *http.Request) {
 		data[value] = entry
 		err := db.Storage.Write(data)
 		if err != nil {
-			if err.Error() == "Not UNIQUE URL" {
+			if err.Error() == "not uniquie url" {
 				s, err := db.Storage.TagByURL(in[i].Long)
 				if err != nil {
 					http.Error(w, "Storage error", http.StatusInternalServerError)
@@ -289,6 +287,10 @@ func (db app) getHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data, err := db.Storage.ReadByTag(p)
+	if err != nil {
+		http.Error(w, "DB read error", http.StatusInternalServerError)
+		return
+	}
 	var count int
 	for i := range data {
 		if i == p {

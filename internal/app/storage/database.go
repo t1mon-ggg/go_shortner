@@ -106,8 +106,8 @@ func (database *Postgresql) Ping() error {
 }
 
 //Close - закрытие дексриптора базы данных
-func (database *Postgresql) Close() error {
-	err := database.db.Close()
+func (s *Postgresql) Close() error {
+	err := s.db.Close()
 	if err != nil {
 		return err
 	}
@@ -136,6 +136,9 @@ func (s *Postgresql) ReadByCookie(cookie string) (helpers.Data, error) {
 	log.Printf("Executing \"%s\"\n", query)
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
+		return nil, err
+	}
+	if rows.Err() != nil {
 		return nil, err
 	}
 	for rows.Next() {
