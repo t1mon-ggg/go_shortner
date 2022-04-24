@@ -66,13 +66,13 @@ func NewPostgreSQL(conn string) (*Postgresql, error) {
 }
 
 //open - подключение к базу данных, создание схемы БД
-func (c *Postgresql) open() error {
+func (s *Postgresql) open() error {
 	var err error
-	c.db, err = sql.Open("postgres", c.Conn)
+	s.db, err = sql.Open("postgres", s.Conn)
 	if err != nil {
 		return err
 	}
-	err = c.create()
+	err = s.create()
 	if err != nil {
 		return err
 	}
@@ -80,10 +80,10 @@ func (c *Postgresql) open() error {
 }
 
 //create - создание схемы БД
-func (c *Postgresql) create() error {
+func (s *Postgresql) create() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	_, err := c.db.ExecContext(ctx, schemaSQL)
+	_, err := s.db.ExecContext(ctx, schemaSQL)
 	if err != nil {
 		return err
 	}
@@ -91,12 +91,12 @@ func (c *Postgresql) create() error {
 }
 
 //Ping - проверка состояния соединения с базой данных
-func (database *Postgresql) Ping() error {
+func (s *Postgresql) Ping() error {
 	log.Println("Check connection to PostgreSQL")
 	ctx := context.Background()
 	connection, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	err := database.db.PingContext(connection)
+	err := s.db.PingContext(connection)
 	if err != nil {
 		log.Println("Connection to PostgreSQL failed")
 		return err

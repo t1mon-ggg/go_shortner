@@ -174,7 +174,6 @@ func (db *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 	newentry.Short[short] = longURL.LongURL
 	data[value] = newentry
 	err = db.Storage.Write(data)
-
 	if err != nil {
 		if err.Error() == "not uniquie url" {
 			s, err := db.Storage.TagByURL(longURL.LongURL)
@@ -367,7 +366,7 @@ func (db *app) checkCookie(cookie *http.Cookie) bool {
 	if err != nil {
 		log.Println(err)
 	}
-	checkdata, err := db.Storage.ReadByCookie(data)
+	checkdata, _ := db.Storage.ReadByCookie(data)
 	h := hmac.New(sha256.New, []byte(checkdata[data].Key))
 	h.Write([]byte(data))
 	signed := h.Sum(nil)
