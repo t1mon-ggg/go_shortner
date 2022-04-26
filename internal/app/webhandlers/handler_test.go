@@ -19,7 +19,7 @@ import (
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/config"
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
-	"github.com/t1mon-ggg/go_shortner/internal/app/rand"
+	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
 
@@ -32,7 +32,7 @@ func newServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *app) {
 	db.Config = config.NewConfig()
 	require.NoError(t, err)
 	r := chi.NewRouter()
-	db.MyMiddlewares(r)
+	db.Middlewares(r)
 	r.Route("/", db.Router)
 	return jar, r, db
 }
@@ -236,8 +236,8 @@ func Test_UnshortStatic(t *testing.T) {
 		},
 	}
 	jar, r, db := newServer(t)
-	data := make(map[string]helpers.WebData)
-	data["cookie1"] = helpers.WebData{Key: "secret_key", Short: map[string]string{"abcdABCD": "http://example.org"}}
+	data := make(map[string]models.WebData)
+	data["cookie1"] = models.WebData{Key: "secret_key", Short: map[string]string{"abcdABCD": "http://example.org"}}
 	db.Storage.Write(data)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -514,7 +514,7 @@ func Test_UserURLs(t *testing.T) {
 				cvalues = make([]string, 0)
 				for _, c := range cookies {
 					cvalues = append(cvalues, c.Value)
-					c.Value = rand.RandStringRunes(96)
+					c.Value = helpers.RandStringRunes(96)
 				}
 				response, _ = testRequest(t, ts, jar, http.MethodGet, tt.args.query, "", tt.args.ctype)
 				defer response.Body.Close()

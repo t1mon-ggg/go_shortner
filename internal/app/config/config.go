@@ -6,18 +6,18 @@ import (
 	"log"
 
 	"github.com/caarlos0/env"
-	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
 
-type Vars struct {
+type Config struct {
 	BaseURL         string `env:"BASE_URL"`
 	ServerAddress   string `env:"SERVER_ADDRESS"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Database        string `env:"DATABASE_DSN"`
 }
 
-func NewConfig() *Vars {
-	s := Vars{
+//NewConfig - выделение памяти для новой конфигурации
+func NewConfig() *Config {
+	s := Config{
 		BaseURL:         "http://127.0.0.1:8080",
 		ServerAddress:   "127.0.0.1:8080",
 		FileStoragePath: "",
@@ -26,8 +26,9 @@ func NewConfig() *Vars {
 	return &s
 }
 
-func (cfg *Vars) ReadEnv() error {
-	var c Vars
+//ReadEnv - чтение переменных окружения
+func (cfg *Config) readEnv() error {
+	var c Config
 	err := env.Parse(&c)
 	if err != nil {
 		return err
@@ -49,7 +50,8 @@ func (cfg *Vars) ReadEnv() error {
 	return nil
 }
 
-func (cfg *Vars) ReadCli() {
+//ReadCli - чтение флагов командной строки
+func (cfg *Config) readCli() {
 	baseurlptr := flag.String("b", "", "BASE_URL")
 	srvaddrptr := flag.String("a", "", "SERVER_ADDRESS")
 	fpathptr := flag.String("f", "", "FILE_STORAGE_PATH")
@@ -73,22 +75,17 @@ func (cfg *Vars) ReadCli() {
 
 }
 
-func (cfg *Vars) SetStorage() (storage.Database, error) {
-	if cfg.Database != "" {
-		db, err := storage.NewPostgreSQL(cfg.Database)
-		if err != nil {
-			return nil, err
-		}
-		return db, nil
+//Init - инициализация конфигурации
+func (cfg *Config) Init() error {
+	err := cfg.readEnv()
+	if err != nil {
+		return err
 	}
-	if cfg.FileStoragePath != "" {
-		db := storage.NewFileDB(cfg.FileStoragePath)
-		return db, nil
-	}
-	db := storage.NewMemDB()
-	return db, nil
+	cfg.readCli()
+	return nil
 }
 
+//isFlagPassed - проверка применение флага
 func isFlagPassed(name string) bool {
 	found := false
 	flag.Visit(func(f *flag.Flag) {

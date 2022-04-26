@@ -26,16 +26,16 @@ func TestOsVars_Read(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			AppVars := NewConfig()
-			err := AppVars.ReadEnv()
+			cfg := NewConfig()
+			err := cfg.readEnv()
 			require.NoError(t, err)
 			switch tt.name {
 			case "Test FILE_STORAGE_PATH":
-				require.Equal(t, tt.want, AppVars.FileStoragePath)
+				require.Equal(t, tt.want, cfg.FileStoragePath)
 			case "Test SERVER_ADDRESS":
-				require.Equal(t, tt.want, AppVars.ServerAddress)
+				require.Equal(t, tt.want, cfg.ServerAddress)
 			case "Test BASE_URL":
-				require.Equal(t, tt.want, AppVars.BaseURL)
+				require.Equal(t, tt.want, cfg.BaseURL)
 			}
 		})
 	}

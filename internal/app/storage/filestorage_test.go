@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
+	. "github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
 func Test_File_Ping(t *testing.T) {
@@ -58,11 +58,11 @@ func Test_openFile(t *testing.T) {
 func Test_FileDB_Write(t *testing.T) {
 	tests := []struct {
 		name string
-		args helpers.Data
+		args map[string]WebData
 	}{
 		{
 			name: "write json to file",
-			args: helpers.Data{
+			args: map[string]WebData{
 				"cookie1": {
 					Key: "secret_key1",
 					Short: map[string]string{

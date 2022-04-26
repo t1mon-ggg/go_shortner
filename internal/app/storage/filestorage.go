@@ -3,11 +3,11 @@ package storage
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"log"
 	"os"
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
+	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
 //FileDB - структура для работы с фаловым хранилищем данных
@@ -112,38 +112,20 @@ func (f *FileDB) Close() error {
 }
 
 //Write - запись в файл
-func (f *FileDB) Write(m helpers.Data) error {
-	db, err := f.readAllFile()
+func (f *FileDB) Write(m map[string]models.WebData) error {
+	data, err := f.readAllFile()
 	if err != nil {
 		return err
 	}
-	for i := range m {
-		entry := m[i]
-		if len(entry.Short) != 0 {
-			for j := range entry.Short {
-				if f.checkURLUnique(entry.Short[j]) {
-					return errors.New("not unique url")
-				}
-				todo := make(map[string]helpers.WebData)
-				newentry := helpers.WebData{}
-				newentry.Key = entry.Key
-				url := make(map[string]string)
-				url[j] = entry.Short[j]
-				newentry.Short = url
-				todo[i] = newentry
-				db = mergeData(db, todo)
-			}
-		} else {
-			todo := make(map[string]helpers.WebData)
-			todo[i] = entry
-			db = mergeData(db, todo)
-		}
+	data, err = helpers.Merger(data, m)
+	if err != nil {
+		return err
 	}
 	f.rewriteFile()
 	encoder := f.getCoder()
-	for i := range db {
-		wr := make(helpers.Data)
-		wr[i] = db[i]
+	for i := range data {
+		wr := make(map[string]models.WebData)
+		wr[i] = data[i]
 		err := encoder.Encode(wr)
 		if err != nil {
 			return err
@@ -154,23 +136,11 @@ func (f *FileDB) Write(m helpers.Data) error {
 	return nil
 }
 
-func (f *FileDB) checkURLUnique(s string) bool {
-	db, _ := f.readAllFile()
-	for i := range db {
-		for j := range db[i].Short {
-			if db[i].Short[j] == s {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 //ReadByCookie - чтение из файла
-func (f *FileDB) readAllFile() (helpers.Data, error) {
+func (f *FileDB) readAllFile() (map[string]models.WebData, error) {
 	f.readFile()
 	scanner := f.getScanner()
-	m := make(helpers.Data)
+	m := make(map[string]models.WebData)
 	for scanner.Scan() {
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
@@ -184,12 +154,12 @@ func (f *FileDB) readAllFile() (helpers.Data, error) {
 
 //TagByURL - поиск URL
 func (f *FileDB) TagByURL(s string) (string, error) {
-	db, err := f.readAllFile()
+	data, err := f.readAllFile()
 	if err != nil {
 		return "", err
 	}
-	for i := range db {
-		for j, url := range db[i].Short {
+	for i := range data {
+		for j, url := range data[i].Short {
 			if url == s {
 				return j, nil
 			}
@@ -199,17 +169,17 @@ func (f *FileDB) TagByURL(s string) (string, error) {
 }
 
 //ReadByCookie - чтение из файла
-func (f *FileDB) ReadByCookie(s string) (helpers.Data, error) {
+func (f *FileDB) ReadByCookie(s string) (map[string]models.WebData, error) {
 	f.readFile()
 	scanner := f.getScanner()
-	m := make(helpers.Data)
+	m := make(map[string]models.WebData)
 	for scanner.Scan() {
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
 			return nil, err
 		}
 	}
-	data := make(map[string]helpers.WebData)
+	data := make(map[string]models.WebData)
 	for cookie, webdata := range m {
 		if cookie == s {
 			data[s] = webdata
@@ -224,7 +194,7 @@ func (f *FileDB) ReadByCookie(s string) (helpers.Data, error) {
 func (f *FileDB) ReadByTag(s string) (map[string]string, error) {
 	f.readFile()
 	scanner := f.getScanner()
-	m := make(helpers.Data)
+	m := make(map[string]models.WebData)
 	for scanner.Scan() {
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {

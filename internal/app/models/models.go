@@ -1,6 +1,4 @@
-package helpers
-
-type Data map[string]WebData
+package models
 
 type WebData struct {
 	Key   string            `json:"key"`

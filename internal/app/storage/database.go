@@ -10,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
+	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
 const (
@@ -115,8 +116,8 @@ func (s *Postgresql) Close() error {
 }
 
 //ReadByCookie - чтение из базы данных
-func (s *Postgresql) ReadByCookie(cookie string) (helpers.Data, error) {
-	a := make(map[string]helpers.WebData)
+func (s *Postgresql) ReadByCookie(cookie string) (map[string]models.WebData, error) {
+	a := make(map[string]models.WebData)
 	log.Println("Select from IDs")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -127,7 +128,7 @@ func (s *Postgresql) ReadByCookie(cookie string) (helpers.Data, error) {
 	if err != nil {
 		return nil, err
 	}
-	a[rowCookie] = helpers.WebData{Key: rowKey, Short: make(map[string]string)}
+	a[rowCookie] = models.WebData{Key: rowKey, Short: make(map[string]string)}
 	entry := a[rowCookie]
 	shorts := entry.Short
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
@@ -185,7 +186,7 @@ func (s *Postgresql) ReadByTag(tag string) (map[string]string, error) {
 }
 
 //Write - запись в базы данных
-func (s *Postgresql) Write(data helpers.Data) error {
+func (s *Postgresql) Write(data map[string]models.WebData) error {
 	for i := range data {
 		ctx1, cancel1 := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel1()
