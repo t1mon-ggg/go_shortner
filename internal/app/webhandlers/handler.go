@@ -313,7 +313,7 @@ func (application *app) deleteTags(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!", body)
+	log.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!", string(body))
 }
 
 func (application *app) Middlewares(r *chi.Mux) {
