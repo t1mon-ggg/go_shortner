@@ -313,7 +313,9 @@ func (application *app) deleteTags(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!", string(body))
+	re := regexp.MustCompile(`\w+`)
+	tags := re.FindAllString(string(body), -1)
+	log.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!", tags)
 }
 
 func (application *app) Middlewares(r *chi.Mux) {
