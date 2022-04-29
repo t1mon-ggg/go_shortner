@@ -48,6 +48,7 @@ func (application *app) Router(r chi.Router) {
 	r.Post("/", application.postHandler)
 	r.Post("/api/shorten", application.postAPIHandler)
 	r.Post("/api/shorten/batch", application.postAPIBatch)
+	r.Delete("/api/user/urls", application.deleteTags)
 	r.MethodNotAllowed(otherHandler)
 }
 
@@ -301,6 +302,18 @@ func (application *app) getHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func (application *app) deleteTags(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte{})
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!", body)
 }
 
 func (application *app) Middlewares(r *chi.Mux) {
