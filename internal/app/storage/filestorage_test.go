@@ -99,7 +99,7 @@ func Test_FileDB_Write(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (f *FileDB) test_prepare(t *testing.T) {
+func (f *FileDB) testPrepare(t *testing.T) {
 	data := []models.ClientData{
 		{
 			Cookie: "cookie1",
@@ -141,7 +141,7 @@ func (f *FileDB) test_prepare(t *testing.T) {
 //ReadByCookie(string) (models.ClientData, error)
 func Test_FileDB_ReadByCookie(t *testing.T) {
 	f := NewFileDB("createme.txt")
-	f.test_prepare(t)
+	f.testPrepare(t)
 	exp := models.ClientData{
 		Cookie: "cookie2",
 		Key:    "secret_key2",
@@ -162,7 +162,7 @@ func Test_FileDB_ReadByCookie(t *testing.T) {
 //ReadByTag(string) (models.ShortData, error)
 func Test_FileDB_ReadByTag(t *testing.T) {
 	f := NewFileDB("createme.txt")
-	f.test_prepare(t)
+	f.testPrepare(t)
 	exp := models.ShortData{
 		Short: "abcdABC2",
 		Long:  "http://example2.org",
@@ -177,7 +177,7 @@ func Test_FileDB_ReadByTag(t *testing.T) {
 //TagByURL(string) (string, error)
 func Test_FileDB_TagByURL(t *testing.T) {
 	f := NewFileDB("createme.txt")
-	f.test_prepare(t)
+	f.testPrepare(t)
 	exp := "abcdABC2"
 	data, err := f.TagByURL("http://example2.org")
 	require.NoError(t, err)
