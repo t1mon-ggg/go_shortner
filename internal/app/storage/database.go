@@ -160,8 +160,10 @@ func (s *Postgresql) TagByURL(url string) (string, error) {
 	defer cancel()
 	query := fmt.Sprintf(urlSelect, url)
 	var short string
+	log.Printf("Executing \"%s\"\n", query)
 	err := s.db.QueryRowContext(ctx, query).Scan(&short)
 	if err != nil {
+		log.Println("!!!!!!!!!!!!!!!", err)
 		return "", err
 	}
 	return short, nil
@@ -207,6 +209,8 @@ func (s *Postgresql) Write(data models.ClientData) error {
 			return err
 		}
 		defer stmt1.Close()
+		log.Printf("Try to exec transaction \"%s\" with values %s, %s\n", writeIDs, data.Cookie, data.Key)
+
 		_, err = stmt1.ExecContext(ctx, data.Cookie, data.Key)
 		if err != nil {
 			return err
@@ -220,10 +224,11 @@ func (s *Postgresql) Write(data models.ClientData) error {
 	}
 	defer stmt2.Close()
 	for _, value := range data.Short {
+		log.Printf("Try to exec transaction \"%s\" with values %s, %s, %s\n", writeURLs, data.Cookie, value.Short, value.Long)
 		_, err = stmt2.ExecContext(ctx, data.Cookie, value.Short, value.Long)
 		if err != nil {
 			if helpers.UniqueViolationError(err) {
-				newerr := errors.New("uniquie url")
+				newerr := errors.New("not uniquie url")
 				return newerr
 			}
 			return err
