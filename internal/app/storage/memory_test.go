@@ -8,8 +8,8 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
-func (db *MemDB) testPrepare(t *testing.T) {
-	data := []models.ClientData{
+func (data *MemDB) testPrepare(t *testing.T) {
+	db := []models.ClientData{
 		{
 			Cookie: "cookie1",
 			Key:    "secret_key1",
@@ -41,8 +41,8 @@ func (db *MemDB) testPrepare(t *testing.T) {
 			},
 		},
 	}
-	for _, value := range data {
-		err := db.Write(value)
+	for _, value := range db {
+		err := data.Write(value)
 		require.NoError(t, err)
 	}
 }
