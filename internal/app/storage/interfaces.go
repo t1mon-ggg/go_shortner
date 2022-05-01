@@ -16,13 +16,13 @@ type Database interface {
 
 //SetStorage - отпределения типа хранилища и его применение
 func SetStorage(cfg *config.Config) (Database, error) {
-	// if cfg.Database != "" {
-	// 	stor, err := NewPostgreSQL(cfg.Database)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return stor, nil
-	// }
+	if cfg.Database != "" {
+		stor, err := NewPostgreSQL(cfg.Database)
+		if err != nil {
+			return nil, err
+		}
+		return stor, nil
+	}
 	if cfg.FileStoragePath != "" {
 		stor := NewFileDB(cfg.FileStoragePath)
 		return stor, nil
