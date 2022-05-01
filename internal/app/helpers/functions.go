@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"math/big"
-	"reflect"
 
 	"github.com/jackc/pgerrcode"
 	"github.com/lib/pq"
@@ -13,19 +12,19 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
-func UniqueViolationError(err error) error {
+func UniqueViolationError(err error) bool {
 	if driverErr, ok := err.(*pq.Error); ok {
 		if pgerrcode.UniqueViolation == driverErr.Code {
-			return errors.New("not uniquie url")
+			return true
 		}
 	}
-	return err
+	return false
 }
 
-func checkURLUnique(data map[string]models.WebData, s string) bool {
-	for i := range data {
-		for j := range data[i].Short {
-			if data[i].Short[j] == s {
+func checkURLUnique(data []models.ClientData, s string) bool {
+	for _, value := range data {
+		for _, short := range value.Short {
+			if short.Long == s {
 				return true
 			}
 		}
@@ -33,70 +32,47 @@ func checkURLUnique(data map[string]models.WebData, s string) bool {
 	return false
 }
 
-func mergeURLs(old, new map[string]string) map[string]string {
-	if reflect.DeepEqual(old, new) {
-		return old
-	}
-	for i := range new {
-		if _, ok := old[i]; ok {
-			if reflect.DeepEqual(old[i], new[i]) {
-				continue
+func mergeURLs(old, new []models.ShortData) []models.ShortData {
+	for _, newval := range new {
+		count := 0
+		for _, oldval := range old {
+			if newval == oldval {
+				count++
 			}
-		} else {
-			old[i] = new[i]
+		}
+		if count == 0 {
+			old = append(old, newval)
 		}
 	}
 	return old
 }
 
-func mergeData(old, new map[string]models.WebData) map[string]models.WebData {
-	if reflect.DeepEqual(old, new) {
+func mergeData(old []models.ClientData, new models.ClientData) []models.ClientData {
+	if len(old) == 0 {
+		old = append(old, new)
 		return old
 	}
-	for i := range new {
-		if _, ok := old[i]; ok {
-			if reflect.DeepEqual(old[i], new[i]) {
-				continue
-			} else {
-				entry := old[i]
-				newentry := new[i]
-				if newentry.Key != "" && newentry.Key != entry.Key {
-					entry.Key = newentry.Key
-				}
-				entry.Short = mergeURLs(entry.Short, newentry.Short)
-				old[i] = entry
-			}
-		} else {
-			old[i] = new[i]
+	count := 0
+	for i := range old {
+		if old[i].Cookie == new.Cookie {
+			count++
+			old[i].Short = mergeURLs(old[i].Short, new.Short)
 		}
+	}
+	if count == 0 {
+		old = append(old, new)
 	}
 	return old
 }
 
-func Merger(data, m map[string]models.WebData) (map[string]models.WebData, error) {
-	for i, entry := range m {
-		if len(entry.Short) != 0 {
-			for j := range entry.Short {
-				if checkURLUnique(data, entry.Short[j]) {
-					return nil, errors.New("not unique url")
-				}
-				todo := make(map[string]models.WebData)
-				newentry := models.WebData{}
-				newentry.Key = entry.Key
-				url := make(map[string]string)
-				url[j] = entry.Short[j]
-				newentry.Short = url
-				todo[i] = newentry
-				data = mergeData(data, todo)
-			}
-		} else {
-			todo := make(map[string]models.WebData)
-			todo[i] = entry
-			data = mergeData(data, todo)
+func Merger(old []models.ClientData, new models.ClientData) ([]models.ClientData, error) {
+	for _, value := range new.Short {
+		if checkURLUnique(old, value.Long) {
+			return old, errors.New("not unique url")
 		}
-
 	}
-	return data, nil
+	old = mergeData(old, new)
+	return old, nil
 }
 
 const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"

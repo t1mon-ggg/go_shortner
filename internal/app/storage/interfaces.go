@@ -6,9 +6,9 @@ import (
 )
 
 type Database interface {
-	Write(map[string]models.WebData) error
-	ReadByCookie(string) (map[string]models.WebData, error)
-	ReadByTag(string) (map[string]string, error)
+	Write(models.ClientData) error
+	ReadByCookie(string) (models.ClientData, error)
+	ReadByTag(string) (models.ShortData, error)
 	TagByURL(string) (string, error)
 	Close() error
 	Ping() error
@@ -16,13 +16,13 @@ type Database interface {
 
 //SetStorage - отпределения типа хранилища и его применение
 func SetStorage(cfg *config.Config) (Database, error) {
-	if cfg.Database != "" {
-		stor, err := NewPostgreSQL(cfg.Database)
-		if err != nil {
-			return nil, err
-		}
-		return stor, nil
-	}
+	// if cfg.Database != "" {
+	// 	stor, err := NewPostgreSQL(cfg.Database)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	return stor, nil
+	// }
 	if cfg.FileStoragePath != "" {
 		stor := NewFileDB(cfg.FileStoragePath)
 		return stor, nil

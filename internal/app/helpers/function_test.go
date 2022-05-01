@@ -5,112 +5,220 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	. "github.com/t1mon-ggg/go_shortner/internal/app/models"
+	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
 func Test_mergeURLs(t *testing.T) {
-	old := map[string]string{
-		"one": "one",
-		"two": "two",
+	old := []models.ShortData{
+		{Short: "One", Long: "One"},
+		{Short: "Two", Long: "Two"},
 	}
-	new := map[string]string{
-		"two":   "two",
-		"three": "three",
+	new := []models.ShortData{
+		{Short: "Two", Long: "Two"},
+		{Short: "Three", Long: "Three"},
 	}
-	result := map[string]string{
-		"one":   "one",
-		"two":   "two",
-		"three": "three",
+	result := []models.ShortData{
+		{Short: "One", Long: "One"},
+		{Short: "Two", Long: "Two"},
+		{Short: "Three", Long: "Three"},
 	}
 	data := mergeURLs(old, new)
 	require.Equal(t, result, data)
 }
 
 func Test_mergeData(t *testing.T) {
-	old := make(map[string]WebData)
-	new := make(map[string]WebData)
-	cookie1 := WebData{Key: "secret-key1",
-		Short: map[string]string{
-			"ABCDEFGH": "http://example1.org",
-			"12345678": "http://example2.org",
+	old := []models.ClientData{
+		{
+			Cookie: "cookie1",
+			Key:    "Key1",
+			Short: []models.ShortData{
+				{
+					Short: "Short1",
+					Long:  "Long1",
+				},
+			},
+		},
+		{
+			Cookie: "cookie2",
+			Key:    "Key2",
+			Short: []models.ShortData{
+				{
+					Short: "Short2",
+					Long:  "Long2",
+				},
+				{
+					Short: "Short3",
+					Long:  "Long3",
+				},
+			},
+		},
+		{
+			Cookie: "cookie3",
+			Key:    "Key3",
+			Short: []models.ShortData{
+				{
+					Short: "Short4",
+					Long:  "Long4",
+				},
+			},
 		},
 	}
-	cookie2 := WebData{
-		Key: "secret-key2",
-		Short: map[string]string{
-			"87654321": "http://example3.org",
+	new := models.ClientData{
+		Cookie: "cookie2",
+		Key:    "Key2",
+		Short: []models.ShortData{
+			{
+				Short: "Short5",
+				Long:  "Long5",
+			},
 		},
 	}
-	cookie4 := WebData{
-		Key: "secret-key4",
-		Short: map[string]string{
-			"87654321": "http://example7.org",
+	result := []models.ClientData{
+		{
+			Cookie: "cookie1",
+			Key:    "Key1",
+			Short: []models.ShortData{
+				{
+					Short: "Short1",
+					Long:  "Long1",
+				},
+			},
+		},
+		{
+			Cookie: "cookie2",
+			Key:    "Key2",
+			Short: []models.ShortData{
+				{
+					Short: "Short2",
+					Long:  "Long2",
+				},
+				{
+					Short: "Short3",
+					Long:  "Long3",
+				},
+				{
+					Short: "Short5",
+					Long:  "Long5",
+				},
+			},
+		},
+		{
+			Cookie: "cookie3",
+			Key:    "Key3",
+			Short: []models.ShortData{
+				{
+					Short: "Short4",
+					Long:  "Long4",
+				},
+			},
 		},
 	}
-	old["cookie1"] = cookie1
-	old["cookie2"] = cookie2
-	old["cookie4"] = cookie4
-	newcookie1 := WebData{
-		Key: "secret-key1",
-		Short: map[string]string{
-			"abcdABCD": "http://example4.org",
-		},
-	}
-	newcookie2 := WebData{
-		Key: "",
-		Short: map[string]string{
-			"AbCdAbCd": "http://example5.org",
-		},
-	}
-	newcookie3 := WebData{
-		Key: "secret-key3",
-		Short: map[string]string{
-			"AbCdAbCd": "http://example6.org",
-		},
-	}
-	newcookie5 := WebData{
-		Key:   "secret-key5",
-		Short: map[string]string{},
-	}
-	new["cookie1"] = newcookie1
-	new["cookie2"] = newcookie2
-	new["cookie3"] = newcookie3
-	new["cookie5"] = newcookie5
-	result := make(map[string]WebData)
-	rcookie1 := WebData{
-		Key: "secret-key1",
-		Short: map[string]string{
-			"ABCDEFGH": "http://example1.org",
-			"12345678": "http://example2.org",
-			"abcdABCD": "http://example4.org",
-		},
-	}
-	rcookie2 := WebData{
-		Key: "secret-key2",
-		Short: map[string]string{
-			"87654321": "http://example3.org",
-			"AbCdAbCd": "http://example5.org",
-		},
-	}
-	rcookie3 := WebData{
-		Key: "secret-key3",
-		Short: map[string]string{
-			"AbCdAbCd": "http://example6.org",
-		},
-	}
-	rcookie4 := WebData{
-		Key: "secret-key4",
-		Short: map[string]string{
-			"87654321": "http://example7.org",
-		},
-	}
-	result["cookie1"] = rcookie1
-	result["cookie2"] = rcookie2
-	result["cookie3"] = rcookie3
-	result["cookie4"] = rcookie4
-	result["cookie5"] = newcookie5
 	data := mergeData(old, new)
 	require.Equal(t, result, data)
+}
+
+func Test_Merger(t *testing.T) {
+	old := []models.ClientData{
+		{
+			Cookie: "cookie1",
+			Key:    "Key1",
+			Short: []models.ShortData{
+				{
+					Short: "Short1",
+					Long:  "Long1",
+				},
+			},
+		},
+		{
+			Cookie: "cookie2",
+			Key:    "Key2",
+			Short: []models.ShortData{
+				{
+					Short: "Short2",
+					Long:  "Long2",
+				},
+				{
+					Short: "Short3",
+					Long:  "Long3",
+				},
+			},
+		},
+		{
+			Cookie: "cookie3",
+			Key:    "Key3",
+			Short: []models.ShortData{
+				{
+					Short: "Short4",
+					Long:  "Long4",
+				},
+			},
+		},
+	}
+	new1 := models.ClientData{
+		Cookie: "cookie2",
+		Key:    "Key2",
+		Short: []models.ShortData{
+			{
+				Short: "Short5",
+				Long:  "Long5",
+			},
+		},
+	}
+	new2 := models.ClientData{
+		Cookie: "cookie2",
+		Key:    "Key2",
+		Short: []models.ShortData{
+			{
+				Short: "Short4",
+				Long:  "Long4",
+			},
+		},
+	}
+	result := []models.ClientData{
+		{
+			Cookie: "cookie1",
+			Key:    "Key1",
+			Short: []models.ShortData{
+				{
+					Short: "Short1",
+					Long:  "Long1",
+				},
+			},
+		},
+		{
+			Cookie: "cookie2",
+			Key:    "Key2",
+			Short: []models.ShortData{
+				{
+					Short: "Short2",
+					Long:  "Long2",
+				},
+				{
+					Short: "Short3",
+					Long:  "Long3",
+				},
+				{
+					Short: "Short5",
+					Long:  "Long5",
+				},
+			},
+		},
+		{
+			Cookie: "cookie3",
+			Key:    "Key3",
+			Short: []models.ShortData{
+				{
+					Short: "Short4",
+					Long:  "Long4",
+				},
+			},
+		},
+	}
+	data, err := Merger(old, new1)
+	require.Equal(t, result, data)
+	require.NoError(t, err)
+	data, err = Merger(old, new2)
+	require.Error(t, err)
 }
 
 func TestRandStringRunes(t *testing.T) {

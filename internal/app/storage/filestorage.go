@@ -112,7 +112,7 @@ func (f *FileDB) Close() error {
 }
 
 //Write - запись в файл
-func (f *FileDB) Write(m map[string]models.WebData) error {
+func (f *FileDB) Write(m models.ClientData) error {
 	data, err := f.readAllFile()
 	if err != nil {
 		return err
@@ -123,13 +123,9 @@ func (f *FileDB) Write(m map[string]models.WebData) error {
 	}
 	f.rewriteFile()
 	encoder := f.getCoder()
-	for i := range data {
-		wr := make(map[string]models.WebData)
-		wr[i] = data[i]
-		err := encoder.Encode(wr)
-		if err != nil {
-			return err
-		}
+	err = encoder.Encode(data)
+	if err != nil {
+		return err
 	}
 	f.Close()
 	f.file = nil
@@ -137,10 +133,10 @@ func (f *FileDB) Write(m map[string]models.WebData) error {
 }
 
 //ReadByCookie - чтение из файла
-func (f *FileDB) readAllFile() (map[string]models.WebData, error) {
+func (f *FileDB) readAllFile() ([]models.ClientData, error) {
 	f.readFile()
 	scanner := f.getScanner()
-	m := make(map[string]models.WebData)
+	m := make([]models.ClientData, 0)
 	for scanner.Scan() {
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
@@ -158,10 +154,10 @@ func (f *FileDB) TagByURL(s string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for i := range data {
-		for j, url := range data[i].Short {
-			if url == s {
-				return j, nil
+	for _, value := range data {
+		for _, url := range value.Short {
+			if url.Long == s {
+				return url.Short, nil
 			}
 		}
 	}
@@ -169,47 +165,33 @@ func (f *FileDB) TagByURL(s string) (string, error) {
 }
 
 //ReadByCookie - чтение из файла
-func (f *FileDB) ReadByCookie(s string) (map[string]models.WebData, error) {
-	f.readFile()
-	scanner := f.getScanner()
-	m := make(map[string]models.WebData)
-	for scanner.Scan() {
-		err := json.Unmarshal([]byte(scanner.Text()), &m)
-		if err != nil {
-			return nil, err
-		}
+func (f *FileDB) ReadByCookie(s string) (models.ClientData, error) {
+	data, err := f.readAllFile()
+	if err != nil {
+		return models.ClientData{}, err
 	}
-	data := make(map[string]models.WebData)
-	for cookie, webdata := range m {
-		if cookie == s {
-			data[s] = webdata
+	for _, value := range data {
+		if value.Cookie == s {
+			return value, nil
 		}
 	}
 	f.Close()
 	f.file = nil
-	return data, nil
+	return models.ClientData{}, nil
 }
 
 //ReadByTag - чтение из файла
-func (f *FileDB) ReadByTag(s string) (map[string]string, error) {
-	f.readFile()
-	scanner := f.getScanner()
-	m := make(map[string]models.WebData)
-	for scanner.Scan() {
-		err := json.Unmarshal([]byte(scanner.Text()), &m)
-		if err != nil {
-			return nil, err
-		}
+func (f *FileDB) ReadByTag(s string) (models.ShortData, error) {
+	data, err := f.readAllFile()
+	if err != nil {
+		return models.ShortData{}, err
 	}
-	f.Close()
-	f.file = nil
-	data := make(map[string]string)
-	for _, webdata := range m {
-		for tag, url := range webdata.Short {
-			if tag == s {
-				data[tag] = url
+	for _, cvalue := range data {
+		for _, svalue := range cvalue.Short {
+			if svalue.Short == s {
+				return svalue, nil
 			}
 		}
 	}
-	return data, nil
+	return models.ShortData{}, nil
 }

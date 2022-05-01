@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -40,8 +41,8 @@ const (
 	tagSearch        = `SELECT COUNT("short") FROM "urls" WHERE "short"='%s'`
 	tagSelect        = `SELECT "short", "long" FROM "urls" WHERE "short"='%s'`
 	urlSelect        = `SELECT "short" FROM "urls" WHERE "long"='%s'`
-	writeIDs         = `INSERT INTO "ids" ("cookie", "key") VALUES ('%s','%s')`
-	writeURLs        = `INSERT INTO "urls" ("cookie", "short", "long") VALUES ('%s','%s','%s')`
+	writeIDs         = `INSERT INTO "ids" ("cookie", "key") VALUES ($1,$2)`
+	writeURLs        = `INSERT INTO "urls" ("cookie", "short", "long") VALUES ($1,$2,$3)`
 	tagDelete        = ``
 	cookieDelete     = ``
 )
@@ -116,8 +117,8 @@ func (s *Postgresql) Close() error {
 }
 
 //ReadByCookie - чтение из базы данных
-func (s *Postgresql) ReadByCookie(cookie string) (map[string]models.WebData, error) {
-	a := make(map[string]models.WebData)
+func (s *Postgresql) ReadByCookie(cookie string) (models.ClientData, error) {
+	a := models.ClientData{}
 	log.Println("Select from IDs")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -126,33 +127,30 @@ func (s *Postgresql) ReadByCookie(cookie string) (map[string]models.WebData, err
 	var rowCookie, rowKey string
 	err := s.db.QueryRowContext(ctx, query).Scan(&rowCookie, &rowKey)
 	if err != nil {
-		return nil, err
+		return models.ClientData{}, err
 	}
-	a[rowCookie] = models.WebData{Key: rowKey, Short: make(map[string]string)}
-	entry := a[rowCookie]
-	shorts := entry.Short
+	a.Cookie = rowCookie
+	a.Key = rowKey
+	a.Short = make([]models.ShortData, 0)
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	query = fmt.Sprintf(cookieSelectURLs, cookie)
 	log.Printf("Executing \"%s\"\n", query)
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return a, err
 	}
 	if rows.Err() != nil {
-		return nil, err
+		return a, err
 	}
 	for rows.Next() {
 		var short, long string
 		err := rows.Scan(&short, &long)
 		if err != nil {
-			return nil, err
+			return a, err
 		}
-		shorts[short] = long
+		a.Short = append(a.Short, models.ShortData{Short: short, Long: long})
 	}
-	entry.Short = shorts
-	a[rowCookie] = entry
-	log.Println(a)
 	return a, nil
 }
 
@@ -170,8 +168,8 @@ func (s *Postgresql) TagByURL(url string) (string, error) {
 }
 
 //ReadByTag - чтение из базы данных
-func (s *Postgresql) ReadByTag(tag string) (map[string]string, error) {
-	m := make(map[string]string)
+func (s *Postgresql) ReadByTag(tag string) (models.ShortData, error) {
+	m := models.ShortData{}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	query := fmt.Sprintf(tagSelect, tag)
@@ -179,71 +177,58 @@ func (s *Postgresql) ReadByTag(tag string) (map[string]string, error) {
 	var short, long string
 	err := s.db.QueryRowContext(ctx, query).Scan(&short, &long)
 	if err != nil {
-		return nil, err
+		return m, err
 	}
-	m[short] = long
+	m.Short = short
+	m.Long = long
 	return m, nil
 }
 
 //Write - запись в базы данных
-func (s *Postgresql) Write(data map[string]models.WebData) error {
-	for i := range data {
-		ctx1, cancel1 := context.WithTimeout(context.Background(), 1*time.Second)
-		defer cancel1()
-		query := fmt.Sprintf(cookieSearch, i)
-		log.Printf("Execuing \"%s\"\n", query)
-		var count int
-		err := s.db.QueryRowContext(ctx1, query).Scan(&count)
+func (s *Postgresql) Write(data models.ClientData) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	var count int
+	query := fmt.Sprintf(cookieSearch, data.Cookie)
+	err := s.db.QueryRowContext(ctx, query).Scan(&count)
+	if err != nil {
+		return err
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if count == 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		stmt1, err := tx.PrepareContext(ctx, writeIDs)
 		if err != nil {
 			return err
 		}
-		log.Println("Search cookie result:", count)
-		if count == 0 {
-			ctx2, cancel2 := context.WithTimeout(context.Background(), 1*time.Second)
-			defer cancel2()
-			query := fmt.Sprintf(writeIDs, i, data[i].Key)
-			log.Printf("Execuing \"%s\"\n", query)
-			result, err := s.db.ExecContext(ctx2, query)
-			if err != nil {
-				return err
-			}
-			affected, err := result.RowsAffected()
-			if err != nil {
-				return err
-			}
-			log.Printf("Executed query:\n%s\n has results:\nAffected rows: %d\n", query, affected)
-		}
-		if len(data[i].Short) != 0 {
-			shorts := data[i].Short
-			for j := range shorts {
-				ctx3, cancel3 := context.WithTimeout(context.Background(), 1*time.Second)
-				defer cancel3()
-				var counttag int
-				query := fmt.Sprintf(tagSearch, j)
-				log.Printf("Execuing \"%s\"\n", query)
-				err := s.db.QueryRowContext(ctx3, query).Scan(&counttag)
-				if err != nil {
-					return err
-				}
-				log.Println("Search cookie result:", counttag)
-				if counttag == 0 {
-					ctx4, cancel4 := context.WithTimeout(context.Background(), 1*time.Second)
-					defer cancel4()
-					query := fmt.Sprintf(writeURLs, i, j, shorts[j])
-					log.Printf("Execuing \"%s\"\n", query)
-					result, err := s.db.ExecContext(ctx4, query)
-					if err != nil {
-						err = helpers.UniqueViolationError(err)
-						return err
-					}
-					affected, err := result.RowsAffected()
-					if err != nil {
-						return err
-					}
-					log.Printf("Executed query:\n%s\n has results:\nAffected rows: %d\n", query, affected)
-				}
-			}
+		defer stmt1.Close()
+		_, err = stmt1.ExecContext(ctx, data.Cookie, data.Key)
+		if err != nil {
+			return err
 		}
 	}
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	stmt2, err := tx.PrepareContext(ctx, writeURLs)
+	if err != nil {
+		return err
+	}
+	defer stmt2.Close()
+	for _, value := range data.Short {
+		_, err = stmt2.ExecContext(ctx, data.Cookie, value.Short, value.Long)
+		if err != nil {
+			if helpers.UniqueViolationError(err) {
+				newerr := errors.New("uniquie url")
+				return newerr
+			}
+			return err
+		}
+	}
+	tx.Commit()
 	return nil
 }

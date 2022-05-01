@@ -236,9 +236,7 @@ func Test_UnshortStatic(t *testing.T) {
 		},
 	}
 	jar, r, db := newServer(t)
-	data := make(map[string]models.WebData)
-	data["cookie1"] = models.WebData{Key: "secret_key", Short: map[string]string{"abcdABCD": "http://example.org"}}
-	db.Storage.Write(data)
+	db.Storage.Write(models.ClientData{Cookie: "cookie1", Key: "secret_key", Short: []models.ShortData{{Short: "abcdABCD", Long: "http://example.org"}}})
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	for _, tt := range tests {

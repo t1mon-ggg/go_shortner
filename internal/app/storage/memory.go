@@ -1,38 +1,43 @@
 package storage
 
 import (
-	"errors"
-
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
 	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
-type MemDB map[string]models.WebData
+type MemDB []models.ClientData
 
-func NewMemDB() MemDB {
-	s := make(map[string]models.WebData)
-	return s
+//NewMemDB - new in memory storage
+func NewMemDB() *MemDB {
+	s := MemDB(make([]models.ClientData, 0))
+	return &s
+}
+
+func (data *MemDB) clientExist(m models.ClientData) bool {
+	for _, value := range *data {
+		if value.Cookie == m.Cookie {
+			return true
+		}
+	}
+	return false
 }
 
 //Write - добавление данных в память
-func (data MemDB) Write(m map[string]models.WebData) error {
-	err := errors.New("invalid input data")
-	if len(m) == 0 {
-		return err
-	}
-	data, err = helpers.Merger(data, m)
+func (data *MemDB) Write(m models.ClientData) error {
+	newData, err := helpers.Merger(*data, m)
 	if err != nil {
 		return err
 	}
+	*data = newData
 	return nil
 }
 
 //TagByURL - чтение из памяти по cookie
-func (data MemDB) TagByURL(s string) (string, error) {
-	for i := range data {
-		for j, url := range data[i].Short {
-			if url == s {
-				return j, nil
+func (data *MemDB) TagByURL(s string) (string, error) {
+	for _, value := range *data {
+		for _, url := range value.Short {
+			if url.Long == s {
+				return url.Short, nil
 			}
 		}
 	}
@@ -40,34 +45,30 @@ func (data MemDB) TagByURL(s string) (string, error) {
 }
 
 //ReadByCookie - чтение из памяти по cookie
-func (data MemDB) ReadByCookie(s string) (map[string]models.WebData, error) {
-	result := make(map[string]models.WebData)
-	for cookie, webdata := range data {
-		if cookie == s {
-			result[s] = webdata
+func (data *MemDB) ReadByCookie(s string) (models.ClientData, error) {
+	for _, value := range *data {
+		if value.Cookie == s {
+			return value, nil
 		}
 	}
-	return result, nil
+	return models.ClientData{}, nil
 }
 
 //ReadByTag - чтение из памяти по cookie
-func (data MemDB) ReadByTag(s string) (map[string]string, error) {
-	result := make(map[string]string)
-	for _, webdata := range data {
-		for tag, url := range webdata.Short {
-			if tag == s {
-				result[tag] = url
+func (data *MemDB) ReadByTag(s string) (models.ShortData, error) {
+	for _, userValue := range *data {
+		for _, urlValue := range userValue.Short {
+			if urlValue.Short == s {
+				return urlValue, nil
 			}
 		}
 	}
-	return result, nil
+	return models.ShortData{}, nil
 }
 
 //Close - освобождение области данных
-func (data MemDB) Close() error {
-	for i := range data {
-		delete(data, i)
-	}
+func (data *MemDB) Close() error {
+	*data = MemDB{}
 	return nil
 }
 

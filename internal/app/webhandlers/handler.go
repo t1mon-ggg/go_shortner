@@ -27,12 +27,6 @@ type app struct {
 	Config  *config.Config
 }
 
-//NewData - создание пустого массива данных
-func NewData() map[string]models.WebData {
-	s := make(map[string]models.WebData)
-	return s
-}
-
 //NewApp - функция для создания новой структуры для работы приложения
 func NewApp() *app {
 	s := app{}
@@ -81,13 +75,13 @@ func (application *app) userURLs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	if len(data) == 0 {
+	if len(data.Short) == 0 {
 		http.Error(w, "No Content", http.StatusNoContent)
 		return
 	}
 	a := make([]answer, 0)
-	for i, content := range data[value].Short {
-		a = append(a, answer{Short: fmt.Sprintf("%s/%s", application.Config.BaseURL, i), Original: content})
+	for _, content := range data.Short {
+		a = append(a, answer{Short: fmt.Sprintf("%s/%s", application.Config.BaseURL, content.Short), Original: content.Long})
 	}
 	d, err := json.Marshal(a)
 	if err != nil {
@@ -104,11 +98,11 @@ func (application *app) userURLs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (application *app) postHandler(w http.ResponseWriter, r *http.Request) {
-	data := make(map[string]models.WebData)
 	value := idCookieValue(w, r)
-	entry := models.WebData{}
+	entry := models.ClientData{}
+	entry.Cookie = value
 	entry.Key = ""
-	entry.Short = make(map[string]string)
+	entry.Short = make([]models.ShortData, 0)
 	defer r.Body.Close()
 	blongURL, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -116,9 +110,8 @@ func (application *app) postHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	slongURL := string(blongURL)
 	surl := helpers.RandStringRunes(8)
-	entry.Short[surl] = slongURL
-	data[value] = entry
-	err = application.Storage.Write(data)
+	entry.Short = append(entry.Short, models.ShortData{Short: surl, Long: slongURL})
+	err = application.Storage.Write(entry)
 	if err != nil {
 		if err.Error() == "not uniquie url" {
 			s, err := application.Storage.TagByURL(slongURL)
@@ -138,12 +131,11 @@ func (application *app) postHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (application *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
-	data := make(map[string]models.WebData)
 	value := idCookieValue(w, r)
-	data[value] = models.WebData{}
-	newentry := data[value]
-	newentry.Key = ""
-	newentry.Short = make(map[string]string)
+	entry := models.ClientData{}
+	entry.Cookie = value
+	entry.Key = ""
+	entry.Short = make([]models.ShortData, 0)
 	type sURL struct {
 		ShortURL string `json:"result"`
 	}
@@ -170,9 +162,8 @@ func (application *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	short := helpers.RandStringRunes(8)
-	newentry.Short[short] = longURL.LongURL
-	data[value] = newentry
-	err = application.Storage.Write(data)
+	entry.Short = append(entry.Short, models.ShortData{Short: short, Long: longURL.LongURL})
+	err = application.Storage.Write(entry)
 	if err != nil {
 		if err.Error() == "not uniquie url" {
 			s, err := application.Storage.TagByURL(longURL.LongURL)
@@ -237,14 +228,13 @@ func (application *app) postAPIBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for i := range in {
-		data := make(map[string]models.WebData)
-		entry := models.WebData{}
+		entry := models.ClientData{}
+		entry.Cookie = value
 		entry.Key = ""
-		entry.Short = make(map[string]string)
+		entry.Short = make([]models.ShortData, 0)
 		short := helpers.RandStringRunes(8)
-		entry.Short[short] = in[i].Long
-		data[value] = entry
-		err := application.Storage.Write(data)
+		entry.Short = append(entry.Short, models.ShortData{Short: short, Long: in[i].Long})
+		err := application.Storage.Write(entry)
 		if err != nil {
 			if err.Error() == "not uniquie url" {
 				s, err := application.Storage.TagByURL(in[i].Long)
@@ -288,23 +278,19 @@ func (application *app) getHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "DB read error", http.StatusInternalServerError)
 		return
 	}
-	var count int
-	for i := range data {
-		if i == p {
-			count++
-			w.Header().Set("Location", data[i])
-			w.WriteHeader(http.StatusTemporaryRedirect)
-			w.Write([]byte{})
-		}
-	}
-	if count == 0 {
+	nilShort := models.ShortData{}
+	if data == nilShort {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
+	w.Header().Set("Location", data.Long)
+	w.WriteHeader(http.StatusTemporaryRedirect)
+	w.Write([]byte{})
 
 }
 
 func (application *app) deleteTags(w http.ResponseWriter, r *http.Request) {
+	value := idCookieValue(w, r)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	w.Write([]byte{})
@@ -315,7 +301,7 @@ func (application *app) deleteTags(w http.ResponseWriter, r *http.Request) {
 	}
 	re := regexp.MustCompile(`\w+`)
 	tags := re.FindAllString(string(body), -1)
-	log.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!", tags)
+	log.Println(value, tags)
 }
 
 func (application *app) Middlewares(r *chi.Mux) {
@@ -397,12 +383,11 @@ func (application *app) addCookie(w http.ResponseWriter, name, value string, key
 		Value:  value + sign,
 		MaxAge: 0,
 	}
-	data := make(map[string]models.WebData)
-	entry := models.WebData{}
+	entry := models.ClientData{}
+	entry.Cookie = value
 	entry.Key = key
-	entry.Short = make(map[string]string)
-	data[value] = entry
-	err := application.Storage.Write(data)
+	entry.Short = make([]models.ShortData, 0)
+	err := application.Storage.Write(entry)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
@@ -416,7 +401,7 @@ func (application *app) checkCookie(cookie *http.Cookie) bool {
 		log.Println(err)
 	}
 	checkdata, _ := application.Storage.ReadByCookie(data)
-	h := hmac.New(sha256.New, []byte(checkdata[data].Key))
+	h := hmac.New(sha256.New, []byte(checkdata.Key))
 	h.Write([]byte(data))
 	signed := h.Sum(nil)
 	return hmac.Equal(sign, signed)
