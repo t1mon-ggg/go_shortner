@@ -219,6 +219,7 @@ func Test_Merger(t *testing.T) {
 	require.NoError(t, err)
 	data, err = Merger(old, new2)
 	require.Error(t, err)
+	require.Equal(t, result, data)
 }
 
 func TestRandStringRunes(t *testing.T) {
