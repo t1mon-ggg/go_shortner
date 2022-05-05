@@ -341,17 +341,14 @@ func (application *app) Middlewares(r *chi.Mux) {
 }
 
 func idCookieValue(w http.ResponseWriter, r *http.Request) string {
-	var newcookieval string
 	var value string
 	cookies := r.Cookies()
 	if len(cookies) == 0 {
 		re := regexp.MustCompile(`\w{96}`)
 		cid := re.FindString(w.Header().Get("Set-Cookie"))
 		if len(cid) != 0 {
-			newcookieval = cid
-			if len(newcookieval) == 96 {
-				value = newcookieval[:32]
-
+			if len(cid) == 96 {
+				value = cid[:32]
 				return value
 			}
 		}
