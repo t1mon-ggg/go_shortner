@@ -60,6 +60,7 @@ func otherHandler(w http.ResponseWriter, r *http.Request) {
 func (application *app) ConnectionTest(w http.ResponseWriter, r *http.Request) {
 	err := application.Storage.Ping()
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Storage connection failed", http.StatusInternalServerError)
 		return
 	}
@@ -75,6 +76,7 @@ func (application *app) userURLs(w http.ResponseWriter, r *http.Request) {
 	cookie := idCookieValue(w, r)
 	data, err := application.Storage.ReadByCookie(cookie)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -88,6 +90,7 @@ func (application *app) userURLs(w http.ResponseWriter, r *http.Request) {
 	}
 	d, err := json.Marshal(a)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Json Error", http.StatusInternalServerError)
 		return
 	}
@@ -110,16 +113,18 @@ func (application *app) postHandler(w http.ResponseWriter, r *http.Request) {
 	blongURL, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 	slongURL := string(blongURL)
 	surl := helpers.RandStringRunes(8)
 	entry.Short = append(entry.Short, models.ShortData{Short: surl, Long: slongURL})
 	err = application.Storage.Write(entry)
 	if err != nil {
-		log.Println("^^^^^^^^^^^^^^^^", err)
 		if err.Error() == "not uniquie url" {
 			s, err := application.Storage.TagByURL(slongURL, cookie)
 			if err != nil {
+				log.Println(err)
 				http.Error(w, "Storage error", http.StatusInternalServerError)
 				return
 			}
@@ -127,6 +132,7 @@ func (application *app) postHandler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fmt.Sprintf("%s/%s", application.Config.BaseURL, s)))
 			return
 		}
+		log.Println(err)
 		http.Error(w, "Storage error", http.StatusInternalServerError)
 		return
 	}
@@ -172,6 +178,7 @@ func (application *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 		if err.Error() == "not uniquie url" {
 			s, err := application.Storage.TagByURL(longURL.LongURL, cookie)
 			if err != nil {
+				log.Println(err)
 				http.Error(w, "Storage error", http.StatusInternalServerError)
 				return
 			}
@@ -187,6 +194,7 @@ func (application *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 			w.Write(abody)
 			return
 		}
+		log.Println(err)
 		http.Error(w, "Storage error", http.StatusInternalServerError)
 		return
 	}
@@ -248,6 +256,7 @@ func (application *app) postAPIBatch(w http.ResponseWriter, r *http.Request) {
 				}
 				out = append(out, output{Correlation: in[i].Correlation, Short: fmt.Sprintf("%s/%s", (*application).Config.BaseURL, s)})
 			} else {
+				log.Println(err)
 				http.Error(w, "Storage error", http.StatusInternalServerError)
 				return
 			}
@@ -257,6 +266,7 @@ func (application *app) postAPIBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	batch, err := json.Marshal(out)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Answer error", http.StatusInternalServerError)
 		return
 	}
@@ -270,6 +280,7 @@ func (application *app) getHandler(w http.ResponseWriter, r *http.Request) {
 	p = p[1:]
 	matched, err := regexp.Match(`\w{8}`, []byte(p))
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "URI process error", http.StatusInternalServerError)
 		return
 	}
@@ -279,6 +290,7 @@ func (application *app) getHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := application.Storage.ReadByTag(p)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "DB read error", http.StatusInternalServerError)
 		return
 	}
@@ -307,6 +319,8 @@ func (application *app) deleteTags(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 	re := regexp.MustCompile(`\w+`)
 	tags := re.FindAllString(string(body), -1)
@@ -401,6 +415,7 @@ func (application *app) addCookie(w http.ResponseWriter, name, value string, key
 	err := application.Storage.Write(entry)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 	http.SetCookie(w, &cookie)
 }

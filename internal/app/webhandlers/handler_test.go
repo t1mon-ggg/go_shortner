@@ -560,8 +560,7 @@ func Test_Delete(t *testing.T) {
 	}
 	response, _ := testRequest(t, ts, jar, http.MethodPost, "/", "", map[string]string{"Content-Type": "text/plain; charset=utf-8"})
 	defer response.Body.Close()
-	in := []input{{Correlation: "12345",
-		Long: "http://example1.org"},
+	in := []input{
 		{Correlation: "12345",
 			Long: "http://example1.org"},
 		{Correlation: "12345",
@@ -657,8 +656,7 @@ func Test_BatchAPI(t *testing.T) {
 		Short       string `json:"short_url"`
 	}
 
-	in := []input{{Correlation: "12345",
-		Long: "http://example1.org"},
+	in := []input{
 		{Correlation: "12345",
 			Long: "http://example1.org"},
 		{Correlation: "12345",
