@@ -165,8 +165,8 @@ func Test_Merger(t *testing.T) {
 		},
 	}
 	new2 := models.ClientData{
-		Cookie: "cookie2",
-		Key:    "Key2",
+		Cookie: "cookie3",
+		Key:    "Key3",
 		Short: []models.ShortData{
 			{
 				Short: "Short4",
@@ -217,7 +217,7 @@ func Test_Merger(t *testing.T) {
 	data, err := Merger(old, new1)
 	require.Equal(t, result, data)
 	require.NoError(t, err)
-	data, err = Merger(old, new2)
+	_, err = Merger(old, new2)
 	require.Error(t, err)
 }
 

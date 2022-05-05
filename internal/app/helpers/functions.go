@@ -67,7 +67,7 @@ func mergeData(old []models.ClientData, new models.ClientData) []models.ClientDa
 
 func Merger(old []models.ClientData, new models.ClientData) ([]models.ClientData, error) {
 	for _, value := range new.Short {
-		if checkURLUnique(old, value.Long, new.Cookie) {
+		if checkURLUnique(old, new.Cookie, value.Long) {
 			return old, errors.New("not unique url")
 		}
 	}

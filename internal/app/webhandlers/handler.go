@@ -392,7 +392,6 @@ func (application *app) addCookie(w http.ResponseWriter, name, value string, key
 		Value:  value + sign,
 		MaxAge: 0,
 		Path:   "/",
-		// Domain: application.Config.ServerAddress,
 	}
 	entry := models.ClientData{}
 	entry.Cookie = value
