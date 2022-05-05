@@ -614,6 +614,7 @@ func Test_Delete(t *testing.T) {
 	var answer []output
 	require.NoError(t, err)
 	err = json.Unmarshal([]byte(astring), &answer)
+	require.NoError(t, err)
 	require.Equal(t, len(in), len(answer))
 	del := make([]string, 0)
 	for i := 5; i < 12; i++ {
@@ -710,5 +711,6 @@ func Test_BatchAPI(t *testing.T) {
 	var answer []output
 	require.NoError(t, err)
 	err = json.Unmarshal([]byte(astring), &answer)
+	require.NoError(t, err)
 	require.Equal(t, len(in), len(answer))
 }
