@@ -117,6 +117,7 @@ func (application *app) postHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	slongURL := string(blongURL)
+	log.Println("Request body:", slongURL)
 	surl := helpers.RandStringRunes(8)
 	entry.Short = append(entry.Short, models.ShortData{Short: surl, Long: slongURL})
 	err = application.Storage.Write(entry)
@@ -165,6 +166,7 @@ func (application *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	log.Println("Request body:", string(body))
 	err = json.Unmarshal(body, &longURL)
 	if err != nil {
 		log.Println("JSON Unmarshal error", err)
