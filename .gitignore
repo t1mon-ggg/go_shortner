@@ -26,4 +26,5 @@ vendor/
 cmd/shortener/storage
 internal/app/storage/createme.txt
 
-internal/app/storage/database_integration_test.go
+internal/app/storage/database_integration*
+internal/app/storage/database_integration_test

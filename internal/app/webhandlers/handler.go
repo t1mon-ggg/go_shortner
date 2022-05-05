@@ -25,16 +25,19 @@ import (
 type app struct {
 	Storage storage.Database
 	Config  *config.Config
+	DelBuf  chan models.DelWorker
 }
 
 //NewApp - функция для создания новой структуры для работы приложения
 func NewApp() *app {
 	s := app{}
 	s.Config = config.NewConfig()
+	s.DelBuf = make(chan models.DelWorker)
 	return &s
 }
 
 func (application *app) Router(r chi.Router) {
+	go application.Storage.Cleaner(application.DelBuf, 10)
 	r.Get("/", defaultGetHandler)
 	r.Get("/ping", application.ConnectionTest)
 	r.Get("/{^[a-zA-Z]}", application.getHandler)
@@ -69,8 +72,8 @@ func (application *app) userURLs(w http.ResponseWriter, r *http.Request) {
 		Short    string `json:"short_url"`
 		Original string `json:"original_url"`
 	}
-	value := idCookieValue(w, r)
-	data, err := application.Storage.ReadByCookie(value)
+	cookie := idCookieValue(w, r)
+	data, err := application.Storage.ReadByCookie(cookie)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -98,9 +101,9 @@ func (application *app) userURLs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (application *app) postHandler(w http.ResponseWriter, r *http.Request) {
-	value := idCookieValue(w, r)
+	cookie := idCookieValue(w, r)
 	entry := models.ClientData{}
-	entry.Cookie = value
+	entry.Cookie = cookie
 	entry.Key = ""
 	entry.Short = make([]models.ShortData, 0)
 	defer r.Body.Close()
@@ -114,7 +117,7 @@ func (application *app) postHandler(w http.ResponseWriter, r *http.Request) {
 	err = application.Storage.Write(entry)
 	if err != nil {
 		if err.Error() == "not uniquie url" {
-			s, err := application.Storage.TagByURL(slongURL)
+			s, err := application.Storage.TagByURL(slongURL, cookie)
 			if err != nil {
 				http.Error(w, "Storage error", http.StatusInternalServerError)
 				return
@@ -131,9 +134,9 @@ func (application *app) postHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (application *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
-	value := idCookieValue(w, r)
+	cookie := idCookieValue(w, r)
 	entry := models.ClientData{}
-	entry.Cookie = value
+	entry.Cookie = cookie
 	entry.Key = ""
 	entry.Short = make([]models.ShortData, 0)
 	type sURL struct {
@@ -166,7 +169,7 @@ func (application *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 	err = application.Storage.Write(entry)
 	if err != nil {
 		if err.Error() == "not uniquie url" {
-			s, err := application.Storage.TagByURL(longURL.LongURL)
+			s, err := application.Storage.TagByURL(longURL.LongURL, cookie)
 			if err != nil {
 				http.Error(w, "Storage error", http.StatusInternalServerError)
 				return
@@ -206,7 +209,7 @@ func (application *app) postAPIBatch(w http.ResponseWriter, r *http.Request) {
 		Correlation string `json:"correlation_id"`
 		Short       string `json:"short_url"`
 	}
-	value := idCookieValue(w, r)
+	cookie := idCookieValue(w, r)
 	out := make([]output, 0)
 	defer r.Body.Close()
 	ctype := r.Header.Get("Content-Type")
@@ -229,7 +232,7 @@ func (application *app) postAPIBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	for i := range in {
 		entry := models.ClientData{}
-		entry.Cookie = value
+		entry.Cookie = cookie
 		entry.Key = ""
 		entry.Short = make([]models.ShortData, 0)
 		short := helpers.RandStringRunes(8)
@@ -237,7 +240,7 @@ func (application *app) postAPIBatch(w http.ResponseWriter, r *http.Request) {
 		err := application.Storage.Write(entry)
 		if err != nil {
 			if err.Error() == "not uniquie url" {
-				s, err := application.Storage.TagByURL(in[i].Long)
+				s, err := application.Storage.TagByURL(in[i].Long, cookie)
 				if err != nil {
 					http.Error(w, "Storage error", http.StatusInternalServerError)
 					return
@@ -283,6 +286,11 @@ func (application *app) getHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
+	if data.Deleted {
+		w.WriteHeader(http.StatusGone)
+		w.Write([]byte{})
+		return
+	}
 	w.Header().Set("Location", data.Long)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Write([]byte{})
@@ -290,7 +298,7 @@ func (application *app) getHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (application *app) deleteTags(w http.ResponseWriter, r *http.Request) {
-	value := idCookieValue(w, r)
+	cookie := idCookieValue(w, r)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	w.Write([]byte{})
@@ -301,7 +309,8 @@ func (application *app) deleteTags(w http.ResponseWriter, r *http.Request) {
 	}
 	re := regexp.MustCompile(`\w+`)
 	tags := re.FindAllString(string(body), -1)
-	log.Println(value, tags)
+	task := models.DelWorker{Cookie: cookie, Tags: tags}
+	application.DelBuf <- task
 }
 
 func (application *app) Middlewares(r *chi.Mux) {
@@ -382,6 +391,8 @@ func (application *app) addCookie(w http.ResponseWriter, name, value string, key
 		Name:   name,
 		Value:  value + sign,
 		MaxAge: 0,
+		Path:   "/",
+		// Domain: application.Config.ServerAddress,
 	}
 	entry := models.ClientData{}
 	entry.Cookie = value

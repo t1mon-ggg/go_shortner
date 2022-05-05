@@ -9,20 +9,22 @@ type Database interface {
 	Write(models.ClientData) error
 	ReadByCookie(string) (models.ClientData, error)
 	ReadByTag(string) (models.ShortData, error)
-	TagByURL(string) (string, error)
+	TagByURL(string, string) (string, error)
+	//Delete(string, []string) error
 	Close() error
 	Ping() error
+	Cleaner(<-chan models.DelWorker, int)
 }
 
 //SetStorage - отпределения типа хранилища и его применение
 func SetStorage(cfg *config.Config) (Database, error) {
-	// if cfg.Database != "" {
-	// 	stor, err := NewPostgreSQL(cfg.Database)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return stor, nil
-	// }
+	if cfg.Database != "" {
+		stor, err := NewPostgreSQL(cfg.Database)
+		if err != nil {
+			return nil, err
+		}
+		return stor, nil
+	}
 	if cfg.FileStoragePath != "" {
 		stor := NewFileDB(cfg.FileStoragePath)
 		return stor, nil

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
 	"github.com/t1mon-ggg/go_shortner/internal/app/models"
@@ -12,8 +13,9 @@ import (
 
 //FileDB - структура для работы с фаловым хранилищем данных
 type FileDB struct {
-	Name string   //имя файла
-	file *os.File //дескриптор для работы с файлом
+	Name string      //имя файла
+	file *os.File    //дескриптор для работы с файлом
+	rw   *sync.Mutex //блокировка для защиты от одновременной записи
 }
 
 //NewFileDB - функция инициализирующая структура FileDB
@@ -42,6 +44,7 @@ func checkFile(filename string) error {
 func (f *FileDB) Ping() error {
 	log.Println("Check connection to files storage")
 	var err error
+	f.rw.Lock()
 	f.file, err = os.OpenFile(f.Name, os.O_RDONLY, 0777)
 	if err != nil {
 		log.Println("File storage failed on opening file for read")
@@ -65,6 +68,7 @@ func (f *FileDB) Ping() error {
 	}
 	f.file = nil
 	log.Println("Connection to file storage confirmed")
+	f.rw.Unlock()
 	return nil
 }
 
@@ -74,6 +78,7 @@ func (f *FileDB) readFile() error {
 	if err != nil {
 		return err
 	}
+	f.rw.Lock()
 	file, err := os.OpenFile(f.Name, os.O_RDONLY, 0777)
 	if err != nil {
 		return err
@@ -88,6 +93,7 @@ func (f *FileDB) rewriteFile() error {
 	if err != nil {
 		return err
 	}
+	f.rw.Lock()
 	file, err := os.OpenFile(f.Name, os.O_WRONLY|os.O_TRUNC, 0777)
 	if err != nil {
 		return err
@@ -129,6 +135,7 @@ func (f *FileDB) Write(m models.ClientData) error {
 	}
 	f.Close()
 	f.file = nil
+	f.rw.Unlock()
 	return nil
 }
 
@@ -149,18 +156,20 @@ func (f *FileDB) readAllFile() ([]models.ClientData, error) {
 }
 
 //TagByURL - поиск URL
-func (f *FileDB) TagByURL(s string) (string, error) {
+func (f *FileDB) TagByURL(s, cookie string) (string, error) {
 	data, err := f.readAllFile()
 	if err != nil {
 		return "", err
 	}
 	for _, value := range data {
 		for _, url := range value.Short {
-			if url.Long == s {
+			if url.Long == s && value.Cookie == cookie {
+				f.rw.Unlock()
 				return url.Short, nil
 			}
 		}
 	}
+	f.rw.Unlock()
 	return "", nil
 }
 
@@ -168,15 +177,18 @@ func (f *FileDB) TagByURL(s string) (string, error) {
 func (f *FileDB) ReadByCookie(s string) (models.ClientData, error) {
 	data, err := f.readAllFile()
 	if err != nil {
+		f.rw.Unlock()
 		return models.ClientData{}, err
 	}
 	for _, value := range data {
 		if value.Cookie == s {
+			f.rw.Unlock()
 			return value, nil
 		}
 	}
 	f.Close()
 	f.file = nil
+	f.rw.Unlock()
 	return models.ClientData{}, nil
 }
 
@@ -184,14 +196,59 @@ func (f *FileDB) ReadByCookie(s string) (models.ClientData, error) {
 func (f *FileDB) ReadByTag(s string) (models.ShortData, error) {
 	data, err := f.readAllFile()
 	if err != nil {
+		f.rw.Unlock()
 		return models.ShortData{}, err
 	}
 	for _, cvalue := range data {
 		for _, svalue := range cvalue.Short {
 			if svalue.Short == s {
+				f.rw.Unlock()
 				return svalue, nil
 			}
 		}
 	}
+	f.rw.Unlock()
 	return models.ShortData{}, nil
+}
+
+func (f *FileDB) deleteTag(task models.DelWorker) {
+	(*f).rw.Lock()
+	data, err := f.readAllFile()
+	if err != nil {
+		log.Println("Error while reading file")
+		return
+	}
+	for _, tag := range task.Tags {
+		for i, user := range data {
+			for j, url := range user.Short {
+				if user.Cookie == task.Cookie && url.Short == tag {
+					data[i].Short[j].Deleted = true
+				}
+			}
+		}
+	}
+	(*f).rw.Lock()
+	f.rewriteFile()
+	encoder := f.getCoder()
+	err = encoder.Encode(data)
+	if err != nil {
+		log.Println("Error while rewriting file")
+		return
+	}
+	f.Close()
+	f.file = nil
+	f.rw.Unlock()
+}
+
+func (f *FileDB) Cleaner(inputCh <-chan models.DelWorker, workers int) {
+	fanOutChs := helpers.FanOut(inputCh, workers)
+	for _, fanOutCh := range fanOutChs {
+		go f.newWorker(fanOutCh)
+	}
+}
+
+func (f *FileDB) newWorker(input <-chan models.DelWorker) {
+	for task := range input {
+		f.deleteTag(task)
+	}
 }

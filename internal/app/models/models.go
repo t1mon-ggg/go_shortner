@@ -12,6 +12,17 @@ type ClientData struct {
 }
 
 type ShortData struct {
-	Short string `json:"short"`
-	Long  string `json:"long"`
+	Short   string `json:"short"`
+	Long    string `json:"long"`
+	Deleted bool   `json:"deleted"`
+}
+
+type DelWorker struct {
+	Cookie string
+	Tags   []string
+}
+
+type DelTask struct {
+	Cookie string
+	Tag    string
 }

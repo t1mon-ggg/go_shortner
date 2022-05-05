@@ -21,10 +21,10 @@ func UniqueViolationError(err error) bool {
 	return false
 }
 
-func checkURLUnique(data []models.ClientData, s string) bool {
+func checkURLUnique(data []models.ClientData, cookie, url string) bool {
 	for _, value := range data {
 		for _, short := range value.Short {
-			if short.Long == s {
+			if short.Long == url && value.Cookie == cookie && !short.Deleted {
 				return true
 			}
 		}
@@ -67,7 +67,7 @@ func mergeData(old []models.ClientData, new models.ClientData) []models.ClientDa
 
 func Merger(old []models.ClientData, new models.ClientData) ([]models.ClientData, error) {
 	for _, value := range new.Short {
-		if checkURLUnique(old, value.Long) {
+		if checkURLUnique(old, value.Long, new.Cookie) {
 			return old, errors.New("not unique url")
 		}
 	}
@@ -89,4 +89,34 @@ func RandStringRunes(n int) string {
 	}
 
 	return string(b)
+}
+
+func FanOut(inputCh <-chan models.DelWorker, workers int) []chan models.DelWorker {
+	chs := make([]chan models.DelWorker, 0, workers)
+	for i := 0; i < workers; i++ {
+		ch := make(chan models.DelWorker)
+		chs = append(chs, ch)
+	}
+	go func() {
+		defer func(chs []chan models.DelWorker) {
+			for _, ch := range chs {
+				close(ch)
+			}
+		}(chs)
+
+		for i := 0; ; i++ {
+			if i == len(chs) {
+				i = 0
+			}
+
+			delRequest, ok := <-inputCh
+			if !ok {
+				return
+			}
+			ch := chs[i]
+			ch <- delRequest
+
+		}
+	}()
+	return chs
 }

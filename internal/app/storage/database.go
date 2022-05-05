@@ -28,23 +28,23 @@ const (
 	MAXVALUE 2147483647
 	START 1
 	CACHE 1
-	),
+	),	
 	  "short" varchar(8) NOT NULL UNIQUE,
-	  "long" varchar(255) NOT NULL UNIQUE,
-	  "cookie" varchar(32)NOT NULL,
-		CONSTRAINT "cookie" FOREIGN KEY ("cookie") REFERENCES "ids" ("cookie") ON DELETE NO ACTION ON UPDATE NO ACTION
-	)
+	  "long" varchar(255) NOT NULL,
+	  "cookie" varchar(32) NOT NULL,
+	  "deleted" bool NOT NULL DEFAULT false,
+	  CONSTRAINT "cookie" FOREIGN KEY ("cookie") REFERENCES "ids" ("cookie") ON DELETE NO ACTION ON UPDATE NO ACTION
+	);
+	CREATE UNIQUE INDEX urls_long_idx ON "urls" ("long" text_ops,"cookie" text_ops) WHERE "deleted"=false;
 `
 	cookieSelectIDs  = `SELECT "cookie", "key" FROM "ids" WHERE "cookie"='%s'`
-	cookieSelectURLs = `SELECT "short", "long" FROM "urls" WHERE "cookie"='%s'`
+	cookieSelectURLs = `SELECT "short", "long", "deleted" FROM "urls" WHERE "cookie"='%s'`
 	cookieSearch     = `SELECT COUNT("cookie") FROM "ids" WHERE "cookie"='%s'`
-	tagSearch        = `SELECT COUNT("short") FROM "urls" WHERE "short"='%s'`
-	tagSelect        = `SELECT "short", "long" FROM "urls" WHERE "short"='%s'`
-	urlSelect        = `SELECT "short" FROM "urls" WHERE "long"='%s'`
+	tagSelect        = `SELECT "short", "long", "deleted" FROM "urls" WHERE "short"='%s'`
+	urlSelect        = `SELECT "short" FROM "urls" WHERE "long"='%s' and "cookie"='%s'`
 	writeIDs         = `INSERT INTO "ids" ("cookie", "key") VALUES ($1,$2)`
 	writeURLs        = `INSERT INTO "urls" ("cookie", "short", "long") VALUES ($1,$2,$3)`
-	tagDelete        = ``
-	cookieDelete     = ``
+	tagDelete        = `UPDATE "urls" SET "deleted"=true WHERE "cookie"=$1 AND "short"=$2`
 )
 
 type Postgresql struct {
@@ -145,20 +145,21 @@ func (s *Postgresql) ReadByCookie(cookie string) (models.ClientData, error) {
 	}
 	for rows.Next() {
 		var short, long string
-		err := rows.Scan(&short, &long)
+		var deleted bool
+		err := rows.Scan(&short, &long, &deleted)
 		if err != nil {
 			return a, err
 		}
-		a.Short = append(a.Short, models.ShortData{Short: short, Long: long})
+		a.Short = append(a.Short, models.ShortData{Short: short, Long: long, Deleted: deleted})
 	}
 	return a, nil
 }
 
 //ReadByURL - чтение из базы данных
-func (s *Postgresql) TagByURL(url string) (string, error) {
+func (s *Postgresql) TagByURL(url, cookie string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	query := fmt.Sprintf(urlSelect, url)
+	query := fmt.Sprintf(urlSelect, url, cookie)
 	var short string
 	err := s.db.QueryRowContext(ctx, query).Scan(&short)
 	if err != nil {
@@ -175,12 +176,14 @@ func (s *Postgresql) ReadByTag(tag string) (models.ShortData, error) {
 	query := fmt.Sprintf(tagSelect, tag)
 	log.Printf("Executing \"%s\"\n", query)
 	var short, long string
-	err := s.db.QueryRowContext(ctx, query).Scan(&short, &long)
+	var deleted bool
+	err := s.db.QueryRowContext(ctx, query).Scan(&short, &long, &deleted)
 	if err != nil {
 		return m, err
 	}
 	m.Short = short
 	m.Long = long
+	m.Deleted = deleted
 	return m, nil
 }
 
@@ -231,4 +234,42 @@ func (s *Postgresql) Write(data models.ClientData) error {
 	}
 	tx.Commit()
 	return nil
+}
+
+func (s *Postgresql) Cleaner(inputCh <-chan models.DelWorker, workers int) {
+	fanOutChs := helpers.FanOut(inputCh, workers)
+	for _, fanOutCh := range fanOutChs {
+		go s.newWorker(fanOutCh)
+	}
+}
+
+func (s *Postgresql) deleteTag(task models.DelWorker) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		log.Println("Error while create transaction:", err)
+		return
+	}
+	defer tx.Rollback()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	stmt, err := tx.PrepareContext(ctx, tagDelete)
+	if err != nil {
+		log.Println("Error while create statement:", err)
+		return
+	}
+	defer stmt.Close()
+	for _, tag := range task.Tags {
+		_, err = stmt.ExecContext(ctx, task.Cookie, tag)
+		if err != nil {
+			log.Println("Error while execute query:", err)
+			return
+		}
+	}
+	tx.Commit()
+}
+
+func (s *Postgresql) newWorker(input <-chan models.DelWorker) {
+	for task := range input {
+		s.deleteTag(task)
+	}
 }

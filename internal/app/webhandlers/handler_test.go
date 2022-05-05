@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/require"
@@ -529,7 +530,7 @@ func Test_UserURLs(t *testing.T) {
 	}
 }
 
-//Test_Ping - тестирование фалового хранилища
+//Test_Ping - тестирование хранилища
 func Test_Ping(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -542,4 +543,172 @@ func Test_Ping(t *testing.T) {
 		defer response.Body.Close()
 		require.Equal(t, http.StatusOK, response.StatusCode)
 	})
+}
+
+//Test_Delete - удаления тегов
+func Test_Delete(t *testing.T) {
+	jar, r, _ := newServer(t)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+	type input struct {
+		Correlation string `json:"correlation_id"`
+		Long        string `json:"original_url"`
+	}
+	type output struct {
+		Correlation string `json:"correlation_id"`
+		Short       string `json:"short_url"`
+	}
+	response, _ := testRequest(t, ts, jar, http.MethodPost, "/", "", map[string]string{"Content-Type": "text/plain; charset=utf-8"})
+	defer response.Body.Close()
+	in := []input{{Correlation: "12345",
+		Long: "http://example1.org"},
+		{Correlation: "12345",
+			Long: "http://example1.org"},
+		{Correlation: "12345",
+			Long: "http://example2.org"},
+		{Correlation: "12345",
+			Long: "http://example3.org"},
+		{Correlation: "12345",
+			Long: "http://example4.org"},
+		{Correlation: "12345",
+			Long: "http://example5.org"},
+		{Correlation: "12345",
+			Long: "http://example6.org"},
+		{Correlation: "12345",
+			Long: "http://example7.org"},
+		{Correlation: "12345",
+			Long: "http://example8.org"},
+		{Correlation: "12345",
+			Long: "http://example9.org"},
+		{Correlation: "12345",
+			Long: "http://example10.org"},
+		{Correlation: "12345",
+			Long: "http://example11.org"},
+		{Correlation: "12345",
+			Long: "http://example12.org"},
+		{Correlation: "12345",
+			Long: "http://example13.org"},
+		{Correlation: "12345",
+			Long: "http://example14.org"},
+		{Correlation: "12345",
+			Long: "http://example15.org"},
+		{Correlation: "12345",
+			Long: "http://example16.org"},
+		{Correlation: "12345",
+			Long: "http://example17.org"},
+		{Correlation: "12345",
+			Long: "http://example18.org"},
+		{Correlation: "12345",
+			Long: "http://example19.org"},
+		{Correlation: "12345",
+			Long: "http://example20.org"},
+	}
+	ctype := map[string]string{
+		"Content-Type": "application/json",
+	}
+	body, err := json.Marshal(in)
+	require.NoError(t, err)
+	response, astring := testRequest(t, ts, jar, http.MethodPost, "/api/shorten/batch", string(body), ctype)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+	var answer []output
+	require.NoError(t, err)
+	err = json.Unmarshal([]byte(astring), &answer)
+	require.Equal(t, len(in), len(answer))
+	del := make([]string, 0)
+	for i := 5; i < 12; i++ {
+		re := regexp.MustCompile(`\w{8}`)
+		match := re.FindString(answer[i].Short)
+		del = append(del, match)
+	}
+	for i := range del {
+		del[i] = fmt.Sprintf("\"%s\"", del[i])
+	}
+	s := strings.Join(del, ",")
+	s = "[" + s + "]"
+	response, _ = testRequest(t, ts, jar, http.MethodDelete, "/api/user/urls", s, ctype)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusAccepted, response.StatusCode)
+	time.Sleep(25 * time.Second)
+	ctype = map[string]string{
+		"Content-Type": "text/plain; charset=utf-8",
+	}
+	for i := 5; i < 12; i++ {
+		re := regexp.MustCompile(`\w{8}`)
+		match := re.FindString(answer[i].Short)
+		response, _ = testRequest(t, ts, jar, http.MethodGet, fmt.Sprintf("/%s", match), s, ctype)
+		defer response.Body.Close()
+		require.Equal(t, http.StatusGone, response.StatusCode)
+	}
+}
+
+//Test_BatchAPI - массовое заполнение базы
+func Test_BatchAPI(t *testing.T) {
+	jar, r, _ := newServer(t)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+	type input struct {
+		Correlation string `json:"correlation_id"`
+		Long        string `json:"original_url"`
+	}
+	type output struct {
+		Correlation string `json:"correlation_id"`
+		Short       string `json:"short_url"`
+	}
+
+	in := []input{{Correlation: "12345",
+		Long: "http://example1.org"},
+		{Correlation: "12345",
+			Long: "http://example1.org"},
+		{Correlation: "12345",
+			Long: "http://example2.org"},
+		{Correlation: "12345",
+			Long: "http://example3.org"},
+		{Correlation: "12345",
+			Long: "http://example4.org"},
+		{Correlation: "12345",
+			Long: "http://example5.org"},
+		{Correlation: "12345",
+			Long: "http://example6.org"},
+		{Correlation: "12345",
+			Long: "http://example7.org"},
+		{Correlation: "12345",
+			Long: "http://example8.org"},
+		{Correlation: "12345",
+			Long: "http://example9.org"},
+		{Correlation: "12345",
+			Long: "http://example10.org"},
+		{Correlation: "12345",
+			Long: "http://example11.org"},
+		{Correlation: "12345",
+			Long: "http://example12.org"},
+		{Correlation: "12345",
+			Long: "http://example13.org"},
+		{Correlation: "12345",
+			Long: "http://example14.org"},
+		{Correlation: "12345",
+			Long: "http://example15.org"},
+		{Correlation: "12345",
+			Long: "http://example16.org"},
+		{Correlation: "12345",
+			Long: "http://example17.org"},
+		{Correlation: "12345",
+			Long: "http://example18.org"},
+		{Correlation: "12345",
+			Long: "http://example19.org"},
+		{Correlation: "12345",
+			Long: "http://example20.org"},
+	}
+	ctype := map[string]string{
+		"Content-Type": "application/json",
+	}
+	body, err := json.Marshal(in)
+	require.NoError(t, err)
+	response, astring := testRequest(t, ts, jar, http.MethodPost, "/api/shorten/batch", string(body), ctype)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+	var answer []output
+	require.NoError(t, err)
+	err = json.Unmarshal([]byte(astring), &answer)
+	require.Equal(t, len(in), len(answer))
 }
