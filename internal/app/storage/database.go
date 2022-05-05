@@ -227,7 +227,7 @@ func (s *Postgresql) Write(data models.ClientData) error {
 		_, err = stmt2.ExecContext(ctx, data.Cookie, value.Short, value.Long)
 		if err != nil {
 			if helpers.UniqueViolationError(err) {
-				newerr := errors.New("not uniquie url")
+				newerr := errors.New("not unique url")
 				return newerr
 			}
 			return err

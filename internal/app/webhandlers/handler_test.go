@@ -712,3 +712,61 @@ func Test_BatchAPI(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, len(in), len(answer))
 }
+
+func Test_Conflict(t *testing.T) {
+	jar, r, _ := newServer(t)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+	t.Run("Test default Get handler", func(t *testing.T) {
+		response, _ := testRequest(t, ts, jar, http.MethodGet, "/", "", map[string]string{"Content-Type": "text/plain; charset=utf-8"})
+		defer response.Body.Close()
+		ctype := map[string]string{
+			"Content-Type": "text/plain; charset=utf-8",
+		}
+		type req struct {
+			URL string `json:"url"` //{"url":"<some_url>"}
+		}
+		s := "http://kiuerhv9unvr.org"
+		response, body1 := testRequest(t, ts, jar, http.MethodPost, "/", s, ctype)
+		defer response.Body.Close()
+		matched, err := regexp.Match(`http:\/\/\w+\.\w+\.\w\.\w:\d+\/\w{8}`, []byte(body1))
+		require.NoError(t, err)
+		require.True(t, matched)
+		time.Sleep(3 * time.Second)
+		response, body2 := testRequest(t, ts, jar, http.MethodPost, "/", s, ctype)
+		defer response.Body.Close()
+		require.Equal(t, http.StatusConflict, response.StatusCode)
+		require.Equal(t, body1, body2)
+
+	})
+}
+
+func Test_APIConflict(t *testing.T) {
+	jar, r, _ := newServer(t)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+	t.Run("Test default Get handler", func(t *testing.T) {
+		response, _ := testRequest(t, ts, jar, http.MethodGet, "/", "", map[string]string{"Content-Type": "text/plain; charset=utf-8"})
+		defer response.Body.Close()
+		ctype := map[string]string{
+			"Content-Type": "application/json",
+		}
+		type req struct {
+			URL string `json:"url"` //{"url":"<some_url>"}
+		}
+		s := req{URL: "http://kiuerhv9unvr.org"}
+		b, err := json.Marshal(s)
+		require.NoError(t, err)
+		response, body1 := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
+		defer response.Body.Close()
+		matched, err := regexp.Match(`{"result":\"http:\/\/\w+\.\w+\.\w\.\w:\d+\/\w{8}\"}`, []byte(body1))
+		require.NoError(t, err)
+		require.True(t, matched)
+		time.Sleep(3 * time.Second)
+		response, body2 := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
+		defer response.Body.Close()
+		require.Equal(t, http.StatusConflict, response.StatusCode)
+		require.Equal(t, body1, body2)
+
+	})
+}

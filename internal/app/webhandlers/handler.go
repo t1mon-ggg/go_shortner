@@ -121,7 +121,7 @@ func (application *app) postHandler(w http.ResponseWriter, r *http.Request) {
 	entry.Short = append(entry.Short, models.ShortData{Short: surl, Long: slongURL})
 	err = application.Storage.Write(entry)
 	if err != nil {
-		if err.Error() == "not uniquie url" {
+		if err.Error() == "not unique url" {
 			s, err := application.Storage.TagByURL(slongURL, cookie)
 			if err != nil {
 				log.Println(err)
@@ -175,15 +175,13 @@ func (application *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 	entry.Short = append(entry.Short, models.ShortData{Short: short, Long: longURL.LongURL})
 	err = application.Storage.Write(entry)
 	if err != nil {
-		if err.Error() == "not uniquie url" {
+		if err.Error() == "not unique url" {
 			s, err := application.Storage.TagByURL(longURL.LongURL, cookie)
 			if err != nil {
 				log.Println(err)
 				http.Error(w, "Storage error", http.StatusInternalServerError)
 				return
 			}
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusConflict)
 			jbody := sURL{ShortURL: fmt.Sprintf("%s/%s", (*application).Config.BaseURL, s)}
 			abody, err := json.Marshal(jbody)
 			if err != nil {
@@ -191,6 +189,8 @@ func (application *app) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
 			w.Write(abody)
 			return
 		}
@@ -248,7 +248,7 @@ func (application *app) postAPIBatch(w http.ResponseWriter, r *http.Request) {
 		entry.Short = append(entry.Short, models.ShortData{Short: short, Long: in[i].Long})
 		err := application.Storage.Write(entry)
 		if err != nil {
-			if err.Error() == "not uniquie url" {
+			if err.Error() == "not unique url" {
 				s, err := application.Storage.TagByURL(in[i].Long, cookie)
 				if err != nil {
 					http.Error(w, "Storage error", http.StatusInternalServerError)
