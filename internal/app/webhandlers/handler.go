@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -346,11 +345,13 @@ func idCookieValue(w http.ResponseWriter, r *http.Request) string {
 	var value string
 	cookies := r.Cookies()
 	if len(cookies) == 0 {
-		str := strings.Split(w.Header().Get("Set-Cookie"), "=")
-		if len(str) == 2 {
-			newcookieval = str[1]
+		re := regexp.MustCompile(`\w{96}`)
+		cid := re.FindString(w.Header().Get("Set-Cookie"))
+		if len(cid) != 0 {
+			newcookieval = cid
 			if len(newcookieval) == 96 {
 				value = newcookieval[:32]
+
 				return value
 			}
 		}
