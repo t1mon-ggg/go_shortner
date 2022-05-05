@@ -2,6 +2,7 @@ package storage
 
 import (
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,14 +13,8 @@ import (
 
 //Ping() error
 func Test_File_Ping(t *testing.T) {
-	var err error
-	f := FileDB{}
-	f.Name = "createme.txt"
-	f.file, err = os.Create("createme.txt")
-	require.NoError(t, err)
-	f.Close()
-	f.file = nil
-	err = f.Ping()
+	f := NewFileDB("createme.txt")
+	err := f.Ping()
 	require.NoError(t, err)
 	err = os.Remove(f.Name)
 	require.NoError(t, err)
@@ -45,6 +40,7 @@ func Test_openFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := FileDB{}
+			f.rw = &sync.Mutex{}
 			f.Name = tt.args
 			defer f.Close()
 			err := f.readFile()
@@ -205,7 +201,7 @@ func Test_FileDB_Delete(t *testing.T) {
 	f.testPrepare(t)
 	task := models.DelWorker{Cookie: "cookie2", Tags: []string{"abcdABC2"}}
 	f.deleteTag(task)
-	time.Sleep(30 * time.Second)
+	time.Sleep(5 * time.Second)
 	d, err := f.ReadByCookie("cookie2")
 	require.NoError(t, err)
 	require.Equal(t, r, d)

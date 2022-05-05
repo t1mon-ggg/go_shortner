@@ -23,6 +23,7 @@ func NewFileDB(name string) *FileDB {
 	s := FileDB{}
 	s.Name = name
 	s.file = nil
+	s.rw = &sync.Mutex{}
 	return &s
 }
 
@@ -44,7 +45,6 @@ func checkFile(filename string) error {
 func (f *FileDB) Ping() error {
 	log.Println("Check connection to files storage")
 	var err error
-	f.rw.Lock()
 	f.file, err = os.OpenFile(f.Name, os.O_RDONLY, 0777)
 	if err != nil {
 		log.Println("File storage failed on opening file for read")
@@ -68,7 +68,6 @@ func (f *FileDB) Ping() error {
 	}
 	f.file = nil
 	log.Println("Connection to file storage confirmed")
-	f.rw.Unlock()
 	return nil
 }
 
@@ -151,6 +150,7 @@ func (f *FileDB) readAllFile() ([]models.ClientData, error) {
 		}
 	}
 	f.Close()
+	f.rw.Unlock()
 	f.file = nil
 	return m, nil
 }
@@ -164,12 +164,10 @@ func (f *FileDB) TagByURL(s, cookie string) (string, error) {
 	for _, value := range data {
 		for _, url := range value.Short {
 			if url.Long == s && value.Cookie == cookie {
-				f.rw.Unlock()
 				return url.Short, nil
 			}
 		}
 	}
-	f.rw.Unlock()
 	return "", nil
 }
 
@@ -177,18 +175,15 @@ func (f *FileDB) TagByURL(s, cookie string) (string, error) {
 func (f *FileDB) ReadByCookie(s string) (models.ClientData, error) {
 	data, err := f.readAllFile()
 	if err != nil {
-		f.rw.Unlock()
 		return models.ClientData{}, err
 	}
 	for _, value := range data {
 		if value.Cookie == s {
-			f.rw.Unlock()
 			return value, nil
 		}
 	}
 	f.Close()
 	f.file = nil
-	f.rw.Unlock()
 	return models.ClientData{}, nil
 }
 
@@ -196,23 +191,19 @@ func (f *FileDB) ReadByCookie(s string) (models.ClientData, error) {
 func (f *FileDB) ReadByTag(s string) (models.ShortData, error) {
 	data, err := f.readAllFile()
 	if err != nil {
-		f.rw.Unlock()
 		return models.ShortData{}, err
 	}
 	for _, cvalue := range data {
 		for _, svalue := range cvalue.Short {
 			if svalue.Short == s {
-				f.rw.Unlock()
 				return svalue, nil
 			}
 		}
 	}
-	f.rw.Unlock()
 	return models.ShortData{}, nil
 }
 
 func (f *FileDB) deleteTag(task models.DelWorker) {
-	(*f).rw.Lock()
 	data, err := f.readAllFile()
 	if err != nil {
 		log.Println("Error while reading file")
@@ -227,7 +218,6 @@ func (f *FileDB) deleteTag(task models.DelWorker) {
 			}
 		}
 	}
-	(*f).rw.Lock()
 	f.rewriteFile()
 	encoder := f.getCoder()
 	err = encoder.Encode(data)

@@ -2,9 +2,11 @@ package storage
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
 	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
@@ -63,10 +65,10 @@ func Test_MEM_Write(t *testing.T) {
 		},
 	}
 	exp := NewMemDB()
-	exp.DB = append(exp.DB, data)
+	exp.DB, _ = helpers.Merger(exp.DB, data)
 	err := db.Write(data)
 	require.NoError(t, err)
-	require.Equal(t, exp, *db)
+	require.Equal(t, exp, db)
 }
 
 func Test_MEM_ReadByCookie(t *testing.T) {
@@ -130,7 +132,7 @@ func Test_MEM_Delete(t *testing.T) {
 		Tags:   []string{"abcdABC2"},
 	}
 	db.deleteTag(task)
-	// require.NoError(t, err)
+	time.Sleep(5 * time.Second)
 	d, err := db.ReadByCookie("cookie2")
 	require.NoError(t, err)
 	require.Equal(t, r, d)

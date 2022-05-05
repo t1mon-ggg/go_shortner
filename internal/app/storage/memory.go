@@ -92,7 +92,6 @@ func (data *MemDB) ReadByTag(s string) (models.ShortData, error) {
 func (data *MemDB) Close() error {
 	(*data).Mux.Lock()
 	*data = MemDB{}
-	(*data).Mux.Unlock()
 	return nil
 }
 
