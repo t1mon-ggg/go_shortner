@@ -14,7 +14,9 @@ import (
 //Ping() error
 func Test_File_Ping(t *testing.T) {
 	f := NewFileDB("createme.txt")
-	err := f.Ping()
+	err := checkFile(f.Name)
+	require.NoError(t, err)
+	err = f.Ping()
 	require.NoError(t, err)
 	err = os.Remove(f.Name)
 	require.NoError(t, err)
