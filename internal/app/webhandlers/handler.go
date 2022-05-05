@@ -116,6 +116,7 @@ func (application *app) postHandler(w http.ResponseWriter, r *http.Request) {
 	entry.Short = append(entry.Short, models.ShortData{Short: surl, Long: slongURL})
 	err = application.Storage.Write(entry)
 	if err != nil {
+		log.Println("^^^^^^^^^^^^^^^^", err)
 		if err.Error() == "not uniquie url" {
 			s, err := application.Storage.TagByURL(slongURL, cookie)
 			if err != nil {

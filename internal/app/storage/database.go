@@ -35,13 +35,13 @@ const (
 	  "deleted" bool NOT NULL DEFAULT false,
 	  CONSTRAINT "cookie" FOREIGN KEY ("cookie") REFERENCES "ids" ("cookie") ON DELETE NO ACTION ON UPDATE NO ACTION
 	);
-	CREATE UNIQUE INDEX urls_long_idx ON "urls" ("long" text_ops,"cookie" text_ops) WHERE "deleted"=false;
+	CREATE UNIQUE INDEX IF NOT EXISTS urls_long_idx ON "urls" ("long" text_ops,"cookie" text_ops) WHERE "deleted"=false;
 `
 	cookieSelectIDs  = `SELECT "cookie", "key" FROM "ids" WHERE "cookie"='%s'`
 	cookieSelectURLs = `SELECT "short", "long", "deleted" FROM "urls" WHERE "cookie"='%s'`
 	cookieSearch     = `SELECT COUNT("cookie") FROM "ids" WHERE "cookie"='%s'`
 	tagSelect        = `SELECT "short", "long", "deleted" FROM "urls" WHERE "short"='%s'`
-	urlSelect        = `SELECT "short" FROM "urls" WHERE "long"='%s' and "cookie"='%s'`
+	urlSelect        = `SELECT "short" FROM "urls" WHERE "long"='%s' AND "cookie"='%s'`
 	writeIDs         = `INSERT INTO "ids" ("cookie", "key") VALUES ($1,$2)`
 	writeURLs        = `INSERT INTO "urls" ("cookie", "short", "long") VALUES ($1,$2,$3)`
 	tagDelete        = `UPDATE "urls" SET "deleted"=true WHERE "cookie"=$1 AND "short"=$2`
@@ -163,6 +163,7 @@ func (s *Postgresql) TagByURL(url, cookie string) (string, error) {
 	var short string
 	err := s.db.QueryRowContext(ctx, query).Scan(&short)
 	if err != nil {
+		log.Println("!!!!!!!!!!!!!!!!", err)
 		return "", err
 	}
 	return short, nil
@@ -226,7 +227,7 @@ func (s *Postgresql) Write(data models.ClientData) error {
 		_, err = stmt2.ExecContext(ctx, data.Cookie, value.Short, value.Long)
 		if err != nil {
 			if helpers.UniqueViolationError(err) {
-				newerr := errors.New("uniquie url")
+				newerr := errors.New("not uniquie url")
 				return newerr
 			}
 			return err
