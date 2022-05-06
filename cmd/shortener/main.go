@@ -12,12 +12,8 @@ import (
 
 func main() {
 	application := webhandlers.NewApp()
-
-	err := application.Config.Init()
-	if err != nil {
-		log.Fatal(err)
-	}
-	application.Storage, err = storage.SetStorage(application.Config)
+	var err error
+	application.Storage, err = storage.GetStorage(application.Config)
 	if err != nil {
 		log.Fatalln("Coud not set storagre", err)
 	}

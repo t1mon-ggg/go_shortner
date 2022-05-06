@@ -16,13 +16,18 @@ type Config struct {
 }
 
 //NewConfig - выделение памяти для новой конфигурации
-func NewConfig() *Config {
+func New() *Config {
 	s := Config{
 		BaseURL:         "http://127.0.0.1:8080",
 		ServerAddress:   "127.0.0.1:8080",
 		FileStoragePath: "",
 		Database:        "",
 	}
+	err := s.readEnv()
+	if err != nil {
+		log.Fatal(err)
+	}
+	s.readCli()
 	return &s
 }
 
@@ -73,16 +78,6 @@ func (cfg *Config) readCli() {
 	parsed := fmt.Sprintf("Flags parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\n", *baseurlptr, *srvaddrptr, *fpathptr, *dbpathptr)
 	log.Println(parsed)
 
-}
-
-//Init - инициализация конфигурации
-func (cfg *Config) Init() error {
-	err := cfg.readEnv()
-	if err != nil {
-		return err
-	}
-	cfg.readCli()
-	return nil
 }
 
 //isFlagPassed - проверка применение флага

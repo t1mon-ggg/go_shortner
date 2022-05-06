@@ -26,9 +26,7 @@ func TestOsVars_Read(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := NewConfig()
-			err := cfg.readEnv()
-			require.NoError(t, err)
+			cfg := New()
 			switch tt.name {
 			case "Test FILE_STORAGE_PATH":
 				require.Equal(t, tt.want, cfg.FileStoragePath)

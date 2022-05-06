@@ -10,7 +10,7 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
-func (data *MemDB) testPrepare(t *testing.T) {
+func (data *ram) testPrepare(t *testing.T) {
 	d := []models.ClientData{
 		{
 			Cookie: "cookie1",
@@ -53,7 +53,7 @@ func (data *MemDB) testPrepare(t *testing.T) {
 }
 
 func Test_MEM_Write(t *testing.T) {
-	db := NewMemDB()
+	db := newRAM()
 	data := models.ClientData{
 		Cookie: "cookie1",
 		Key:    "secret_key",
@@ -64,7 +64,7 @@ func Test_MEM_Write(t *testing.T) {
 			},
 		},
 	}
-	exp := NewMemDB()
+	exp := newRAM()
 	exp.DB, _ = helpers.Merger(exp.DB, data)
 	err := db.Write(data)
 	require.NoError(t, err)
@@ -72,7 +72,7 @@ func Test_MEM_Write(t *testing.T) {
 }
 
 func Test_MEM_ReadByCookie(t *testing.T) {
-	db := NewMemDB()
+	db := newRAM()
 	db.testPrepare(t)
 	exp := models.ClientData{
 		Cookie: "cookie2",
@@ -90,7 +90,7 @@ func Test_MEM_ReadByCookie(t *testing.T) {
 }
 
 func Test_MEM_ReadByTag(t *testing.T) {
-	db := NewMemDB()
+	db := newRAM()
 	db.testPrepare(t)
 	expected := models.ShortData{Short: "abcdABC2", Long: "http://example2.org"}
 	val, err := db.ReadByTag("abcdABC2")
@@ -99,15 +99,15 @@ func Test_MEM_ReadByTag(t *testing.T) {
 }
 
 func Test_MEM_Close(t *testing.T) {
-	db := NewMemDB()
+	db := newRAM()
 	db.testPrepare(t)
 	err := db.Close()
 	require.NoError(t, err)
-	require.Equal(t, MemDB{}, *db)
+	require.Equal(t, ram{}, *db)
 }
 
 func Test_MEM_Ping(t *testing.T) {
-	db := NewMemDB()
+	db := newRAM()
 	db.testPrepare(t)
 	err := db.Ping()
 	require.NoError(t, err)
@@ -125,7 +125,7 @@ func Test_MEM_Delete(t *testing.T) {
 			},
 		},
 	}
-	db := NewMemDB()
+	db := newRAM()
 	db.testPrepare(t)
 	task := models.DelWorker{
 		Cookie: "cookie2",

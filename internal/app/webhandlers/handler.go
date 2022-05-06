@@ -22,7 +22,7 @@ import (
 )
 
 type app struct {
-	Storage storage.Database
+	Storage storage.Data
 	Config  *config.Config
 	DelBuf  chan models.DelWorker
 }
@@ -30,7 +30,7 @@ type app struct {
 //NewApp - функция для создания новой структуры для работы приложения
 func NewApp() *app {
 	s := app{}
-	s.Config = config.NewConfig()
+	s.Config = config.New()
 	s.DelBuf = make(chan models.DelWorker)
 	return &s
 }

@@ -5,19 +5,18 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
-type Database interface {
+type Data interface {
 	Write(models.ClientData) error
 	ReadByCookie(string) (models.ClientData, error)
 	ReadByTag(string) (models.ShortData, error)
 	TagByURL(string, string) (string, error)
-	//Delete(string, []string) error
 	Close() error
 	Ping() error
 	Cleaner(<-chan models.DelWorker, int)
 }
 
-//SetStorage - отпределения типа хранилища и его применение
-func SetStorage(cfg *config.Config) (Database, error) {
+//GetStorage - отпределения типа хранилища и его применение
+func GetStorage(cfg *config.Config) (Data, error) {
 	if cfg.Database != "" {
 		stor, err := NewPostgreSQL(cfg.Database)
 		if err != nil {
@@ -26,9 +25,9 @@ func SetStorage(cfg *config.Config) (Database, error) {
 		return stor, nil
 	}
 	if cfg.FileStoragePath != "" {
-		stor := NewFileDB(cfg.FileStoragePath)
+		stor := NewFile(cfg.FileStoragePath)
 		return stor, nil
 	}
-	stor := NewMemDB()
+	stor := newRAM()
 	return stor, nil
 }

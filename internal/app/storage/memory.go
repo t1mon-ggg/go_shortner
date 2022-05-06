@@ -7,20 +7,20 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
-type MemDB struct {
+type ram struct {
 	DB  []models.ClientData
 	Mux *sync.RWMutex
 }
 
-//NewMemDB - new in memory storage
-func NewMemDB() *MemDB {
-	s := MemDB{}
+//Newram - new in memory storage
+func newRAM() *ram {
+	s := ram{}
 	s.DB = make([]models.ClientData, 0)
 	s.Mux = &sync.RWMutex{}
 	return &s
 }
 
-func (data *MemDB) clientExist(m models.ClientData) bool {
+func (data *ram) clientExist(m models.ClientData) bool {
 	(*data).Mux.RLock()
 	for _, value := range (*data).DB {
 		if value.Cookie == m.Cookie {
@@ -33,7 +33,7 @@ func (data *MemDB) clientExist(m models.ClientData) bool {
 }
 
 //Write - добавление данных в память
-func (data *MemDB) Write(m models.ClientData) error {
+func (data *ram) Write(m models.ClientData) error {
 	(*data).Mux.Lock()
 	newData, err := helpers.Merger((*data).DB, m)
 	if err != nil {
@@ -46,7 +46,7 @@ func (data *MemDB) Write(m models.ClientData) error {
 }
 
 //TagByURL - чтение из памяти по cookie
-func (data *MemDB) TagByURL(s, cookie string) (string, error) {
+func (data *ram) TagByURL(s, cookie string) (string, error) {
 	(*data).Mux.RLock()
 	for _, value := range (*data).DB {
 		for _, url := range value.Short {
@@ -61,7 +61,7 @@ func (data *MemDB) TagByURL(s, cookie string) (string, error) {
 }
 
 //ReadByCookie - чтение из памяти по cookie
-func (data *MemDB) ReadByCookie(s string) (models.ClientData, error) {
+func (data *ram) ReadByCookie(s string) (models.ClientData, error) {
 	(*data).Mux.RLock()
 	for _, value := range (*data).DB {
 		if value.Cookie == s {
@@ -74,7 +74,7 @@ func (data *MemDB) ReadByCookie(s string) (models.ClientData, error) {
 }
 
 //ReadByTag - чтение из памяти по cookie
-func (data *MemDB) ReadByTag(s string) (models.ShortData, error) {
+func (data *ram) ReadByTag(s string) (models.ShortData, error) {
 	(*data).Mux.RLock()
 	for _, userValue := range (*data).DB {
 		for _, urlValue := range userValue.Short {
@@ -89,25 +89,25 @@ func (data *MemDB) ReadByTag(s string) (models.ShortData, error) {
 }
 
 //Close - освобождение области данных
-func (data *MemDB) Close() error {
+func (data *ram) Close() error {
 	(*data).Mux.Lock()
-	*data = MemDB{}
+	*data = ram{}
 	return nil
 }
 
 //Ping - проверка наличия в памяти области данных
-func (data MemDB) Ping() error {
+func (data ram) Ping() error {
 	return nil
 }
 
-func (data *MemDB) Cleaner(inputCh <-chan models.DelWorker, workers int) {
+func (data *ram) Cleaner(inputCh <-chan models.DelWorker, workers int) {
 	fanOutChs := helpers.FanOut(inputCh, workers)
 	for _, fanOutCh := range fanOutChs {
 		go data.newWorker(fanOutCh)
 	}
 }
 
-func (data *MemDB) deleteTag(task models.DelWorker) {
+func (data *ram) deleteTag(task models.DelWorker) {
 	(*data).Mux.Lock()
 	for _, tag := range task.Tags {
 		for i, user := range (*data).DB {
@@ -122,7 +122,7 @@ func (data *MemDB) deleteTag(task models.DelWorker) {
 
 }
 
-func (data *MemDB) newWorker(input <-chan models.DelWorker) {
+func (data *ram) newWorker(input <-chan models.DelWorker) {
 	for task := range input {
 		data.deleteTag(task)
 	}

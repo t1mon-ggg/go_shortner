@@ -11,17 +11,17 @@ import (
 	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 )
 
-//FileDB - структура для работы с фаловым хранилищем данных
-type FileDB struct {
-	Name string      //имя файла
+//fileStorage - структура для работы с фаловым хранилищем данных
+type fileStorage struct {
+	name string      //имя файла
 	file *os.File    //дескриптор для работы с файлом
 	rw   *sync.Mutex //блокировка для защиты от одновременной записи
 }
 
-//NewFileDB - функция инициализирующая структура FileDB
-func NewFileDB(name string) *FileDB {
-	s := FileDB{}
-	s.Name = name
+//NewfileStorage - функция инициализирующая структура fileStorage
+func NewfileStorage(name string) *fileStorage {
+	s := fileStorage{}
+	s.name = name
 	s.file = nil
 	s.rw = &sync.Mutex{}
 	return &s
@@ -42,10 +42,10 @@ func checkFile(filename string) error {
 	return nil
 }
 
-func (f *FileDB) Ping() error {
+func (f *fileStorage) Ping() error {
 	log.Println("Check connection to files storage")
 	var err error
-	f.file, err = os.OpenFile(f.Name, os.O_RDONLY, 0777)
+	f.file, err = os.OpenFile(f.name, os.O_RDONLY, 0777)
 	if err != nil {
 		log.Println("File storage failed on opening file for read")
 		return err
@@ -56,7 +56,7 @@ func (f *FileDB) Ping() error {
 		return err
 	}
 	f.file = nil
-	f.file, err = os.OpenFile(f.Name, os.O_WRONLY, 0777)
+	f.file, err = os.OpenFile(f.name, os.O_WRONLY, 0777)
 	if err != nil {
 		log.Println("File storage failed on opening file for write")
 		return err
@@ -72,13 +72,13 @@ func (f *FileDB) Ping() error {
 }
 
 //readFile - создание файлового дескриптора для чтения из файла
-func (f *FileDB) readFile() error {
-	err := checkFile(f.Name)
+func (f *fileStorage) readFile() error {
+	err := checkFile(f.name)
 	if err != nil {
 		return err
 	}
 	f.rw.Lock()
-	file, err := os.OpenFile(f.Name, os.O_RDONLY, 0777)
+	file, err := os.OpenFile(f.name, os.O_RDONLY, 0777)
 	if err != nil {
 		return err
 	}
@@ -87,13 +87,13 @@ func (f *FileDB) readFile() error {
 }
 
 //rewriteFile - создание файлового дескриптора для перезаписи файла новыми данными
-func (f *FileDB) rewriteFile() error {
-	err := checkFile(f.Name)
+func (f *fileStorage) rewriteFile() error {
+	err := checkFile(f.name)
 	if err != nil {
 		return err
 	}
 	f.rw.Lock()
-	file, err := os.OpenFile(f.Name, os.O_WRONLY|os.O_TRUNC, 0777)
+	file, err := os.OpenFile(f.name, os.O_WRONLY|os.O_TRUNC, 0777)
 	if err != nil {
 		return err
 	}
@@ -102,22 +102,22 @@ func (f *FileDB) rewriteFile() error {
 }
 
 //getScanner - создание дескритрора для потокового чтения json из файла
-func (f *FileDB) getScanner() *bufio.Scanner {
+func (f *fileStorage) getScanner() *bufio.Scanner {
 	return bufio.NewScanner(f.file)
 }
 
 //getCoder - создание дескритрора для потоковой записи json в файл
-func (f *FileDB) getCoder() *json.Encoder {
+func (f *fileStorage) getCoder() *json.Encoder {
 	return json.NewEncoder(f.file)
 }
 
 //Close - закрытие файлового дескриптора после операцияй чтения/записи файла
-func (f *FileDB) Close() error {
+func (f *fileStorage) Close() error {
 	return f.file.Close()
 }
 
 //Write - запись в файл
-func (f *FileDB) Write(m models.ClientData) error {
+func (f *fileStorage) Write(m models.ClientData) error {
 	data, err := f.readAllFile()
 	if err != nil {
 		return err
@@ -139,7 +139,7 @@ func (f *FileDB) Write(m models.ClientData) error {
 }
 
 //ReadByCookie - чтение из файла
-func (f *FileDB) readAllFile() ([]models.ClientData, error) {
+func (f *fileStorage) readAllFile() ([]models.ClientData, error) {
 	f.readFile()
 	scanner := f.getScanner()
 	m := make([]models.ClientData, 0)
@@ -156,7 +156,7 @@ func (f *FileDB) readAllFile() ([]models.ClientData, error) {
 }
 
 //TagByURL - поиск URL
-func (f *FileDB) TagByURL(s, cookie string) (string, error) {
+func (f *fileStorage) TagByURL(s, cookie string) (string, error) {
 	data, err := f.readAllFile()
 	if err != nil {
 		return "", err
@@ -172,7 +172,7 @@ func (f *FileDB) TagByURL(s, cookie string) (string, error) {
 }
 
 //ReadByCookie - чтение из файла
-func (f *FileDB) ReadByCookie(s string) (models.ClientData, error) {
+func (f *fileStorage) ReadByCookie(s string) (models.ClientData, error) {
 	data, err := f.readAllFile()
 	if err != nil {
 		return models.ClientData{}, err
@@ -188,7 +188,7 @@ func (f *FileDB) ReadByCookie(s string) (models.ClientData, error) {
 }
 
 //ReadByTag - чтение из файла
-func (f *FileDB) ReadByTag(s string) (models.ShortData, error) {
+func (f *fileStorage) ReadByTag(s string) (models.ShortData, error) {
 	data, err := f.readAllFile()
 	if err != nil {
 		return models.ShortData{}, err
@@ -203,7 +203,7 @@ func (f *FileDB) ReadByTag(s string) (models.ShortData, error) {
 	return models.ShortData{}, nil
 }
 
-func (f *FileDB) deleteTag(task models.DelWorker) {
+func (f *fileStorage) deleteTag(task models.DelWorker) {
 	data, err := f.readAllFile()
 	if err != nil {
 		log.Println("Error while reading file")
@@ -230,14 +230,14 @@ func (f *FileDB) deleteTag(task models.DelWorker) {
 	f.rw.Unlock()
 }
 
-func (f *FileDB) Cleaner(inputCh <-chan models.DelWorker, workers int) {
+func (f *fileStorage) Cleaner(inputCh <-chan models.DelWorker, workers int) {
 	fanOutChs := helpers.FanOut(inputCh, workers)
 	for _, fanOutCh := range fanOutChs {
 		go f.newWorker(fanOutCh)
 	}
 }
 
-func (f *FileDB) newWorker(input <-chan models.DelWorker) {
+func (f *fileStorage) newWorker(input <-chan models.DelWorker) {
 	for task := range input {
 		f.deleteTag(task)
 	}
