@@ -59,26 +59,34 @@ func (cfg *Config) readEnv() error {
 	return nil
 }
 
-var baseurlptr = flag.String("b", "", "BASE_URL")
-var srvaddrptr = flag.String("a", "", "SERVER_ADDRESS")
-var fpathptr = flag.String("f", "", "FILE_STORAGE_PATH")
-var dbpathptr = flag.String("d", "", "DATABASE_DSN")
+var flags = map[string]string{
+	"b": "BASE_URL",
+	"a": "SERVER_ADDRESS",
+	"f": "FILE_STORAGE_PATH",
+	"d": "DATABASE_DSN",
+}
+
+var baseurlptr = flag.String("b", "", flags["b"])
+var srvaddrptr = flag.String("a", "", flags["a"])
+var fpathptr = flag.String("f", "", flags["f"])
+var dbpathptr = flag.String("d", "", flags["d"])
 
 //ReadCli - чтение флагов командной строки
 func (cfg *Config) readCli() {
 	flag.Parse()
-	if isFlagPassed("b") {
-		cfg.BaseURL = *baseurlptr
-	}
-	if isFlagPassed("a") {
-		cfg.ServerAddress = *srvaddrptr
-	}
-
-	if isFlagPassed("f") {
-		cfg.FileStoragePath = *fpathptr
-	}
-	if isFlagPassed("d") {
-		cfg.Database = *dbpathptr
+	for flag, info := range flags {
+		if isFlagPassed(flag) {
+			switch info {
+			case "BASE_URL":
+				cfg.BaseURL = *baseurlptr
+			case "SERVER_ADDRESS":
+				cfg.ServerAddress = *srvaddrptr
+			case "FILE_STORAGE_PATH":
+				cfg.FileStoragePath = *fpathptr
+			case "DATABASE_DSN":
+				cfg.Database = *dbpathptr
+			}
+		}
 	}
 	parsed := fmt.Sprintf("Flags parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\n", *baseurlptr, *srvaddrptr, *fpathptr, *dbpathptr)
 	log.Println(parsed)
