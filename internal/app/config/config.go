@@ -66,10 +66,10 @@ var flags = map[string]string{
 	"d": "DATABASE_DSN",
 }
 
-var baseurlptr = flag.String("b", "", flags["b"])
-var srvaddrptr = flag.String("a", "", flags["a"])
-var fpathptr = flag.String("f", "", flags["f"])
-var dbpathptr = flag.String("d", "", flags["d"])
+var baseURL = flag.String("b", "", flags["b"])
+var srvAddr = flag.String("a", "", flags["a"])
+var filePath = flag.String("f", "", flags["f"])
+var dbPath = flag.String("d", "", flags["d"])
 
 //ReadCli - чтение флагов командной строки
 func (cfg *Config) readCli() {
@@ -78,13 +78,13 @@ func (cfg *Config) readCli() {
 		if isFlagPassed(flag) {
 			switch info {
 			case "BASE_URL":
-				cfg.BaseURL = *baseurlptr
+				cfg.BaseURL = *baseURL
 			case "SERVER_ADDRESS":
-				cfg.ServerAddress = *srvaddrptr
+				cfg.ServerAddress = *srvAddr
 			case "FILE_STORAGE_PATH":
-				cfg.FileStoragePath = *fpathptr
+				cfg.FileStoragePath = *filePath
 			case "DATABASE_DSN":
-				cfg.Database = *dbpathptr
+				cfg.Database = *dbPath
 			}
 		}
 	}
