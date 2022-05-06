@@ -13,12 +13,12 @@ import (
 
 //Ping() error
 func Test_File_Ping(t *testing.T) {
-	f := NewFileDB("createme.txt")
-	err := checkFile(f.Name)
+	f := NewFile("createme.txt")
+	err := checkFile(f.name)
 	require.NoError(t, err)
 	err = f.Ping()
 	require.NoError(t, err)
-	err = os.Remove(f.Name)
+	err = os.Remove(f.name)
 	require.NoError(t, err)
 
 }
@@ -41,9 +41,9 @@ func Test_openFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := FileDB{}
+			f := fileStorage{}
 			f.rw = &sync.Mutex{}
-			f.Name = tt.args
+			f.name = tt.args
 			defer f.Close()
 			err := f.readFile()
 			require.NoError(t, err)
@@ -89,7 +89,7 @@ func Test_FileDB_Write(t *testing.T) {
 			},
 		},
 	}
-	f := NewFileDB("createme.txt")
+	f := NewFile("createme.txt")
 	for _, value := range data {
 		err := f.Write(value)
 		require.NoError(t, err)
@@ -98,7 +98,7 @@ func Test_FileDB_Write(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (f *FileDB) testPrepare(t *testing.T) {
+func (f *fileStorage) testPrepare(t *testing.T) {
 	data := []models.ClientData{
 		{
 			Cookie: "cookie1",
@@ -139,7 +139,7 @@ func (f *FileDB) testPrepare(t *testing.T) {
 
 //ReadByCookie(string) (models.ClientData, error)
 func Test_FileDB_ReadByCookie(t *testing.T) {
-	f := NewFileDB("createme.txt")
+	f := NewFile("createme.txt")
 	f.testPrepare(t)
 	exp := models.ClientData{
 		Cookie: "cookie2",
@@ -160,7 +160,7 @@ func Test_FileDB_ReadByCookie(t *testing.T) {
 
 //ReadByTag(string) (models.ShortData, error)
 func Test_FileDB_ReadByTag(t *testing.T) {
-	f := NewFileDB("createme.txt")
+	f := NewFile("createme.txt")
 	f.testPrepare(t)
 	exp := models.ShortData{
 		Short: "abcdABC2",
@@ -175,7 +175,7 @@ func Test_FileDB_ReadByTag(t *testing.T) {
 
 //TagByURL(string) (string, error)
 func Test_FileDB_TagByURL(t *testing.T) {
-	f := NewFileDB("createme.txt")
+	f := NewFile("createme.txt")
 	f.testPrepare(t)
 	exp := "abcdABC2"
 	data, err := f.TagByURL("http://example2.org", "cookie2")
@@ -199,7 +199,7 @@ func Test_FileDB_Delete(t *testing.T) {
 			},
 		},
 	}
-	f := NewFileDB("createme.txt")
+	f := NewFile("createme.txt")
 	f.testPrepare(t)
 	task := models.DelWorker{Cookie: "cookie2", Tags: []string{"abcdABC2"}}
 	f.deleteTag(task)
