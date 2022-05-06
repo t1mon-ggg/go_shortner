@@ -18,11 +18,12 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/require"
 
-	"github.com/t1mon-ggg/go_shortner/internal/app/config"
 	"github.com/t1mon-ggg/go_shortner/internal/app/helpers"
 	"github.com/t1mon-ggg/go_shortner/internal/app/models"
 	"github.com/t1mon-ggg/go_shortner/internal/app/storage"
 )
+
+var db *app
 
 func newServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *app) {
 	jar, err := cookiejar.New(nil)
@@ -31,7 +32,6 @@ func newServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *app) {
 	db.Storage, err = storage.GetStorage(db.Config)
 	require.NoError(t, err)
 	require.NoError(t, err)
-	db.Config = config.New()
 	require.NoError(t, err)
 	r := chi.NewRouter()
 	db.Middlewares(r)

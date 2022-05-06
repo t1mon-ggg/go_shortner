@@ -18,8 +18,8 @@ type fileStorage struct {
 	rw   *sync.Mutex //блокировка для защиты от одновременной записи
 }
 
-//NewfileStorage - функция инициализирующая структура fileStorage
-func NewfileStorage(name string) *fileStorage {
+//NewFile - функция инициализирующая структуру fileStorage
+func NewFile(name string) *fileStorage {
 	s := fileStorage{}
 	s.name = name
 	s.file = nil

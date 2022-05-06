@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/caarlos0/env"
 )
@@ -13,6 +14,7 @@ type Config struct {
 	ServerAddress   string `env:"SERVER_ADDRESS"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Database        string `env:"DATABASE_DSN"`
+	once            sync.Once
 }
 
 //NewConfig - выделение памяти для новой конфигурации
@@ -28,6 +30,8 @@ func New() *Config {
 		log.Fatal(err)
 	}
 	s.readCli()
+	resultconfig := fmt.Sprintf("Result config:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\n", s.BaseURL, s.ServerAddress, s.FileStoragePath, s.Database)
+	log.Println(resultconfig)
 	return &s
 }
 
@@ -55,12 +59,13 @@ func (cfg *Config) readEnv() error {
 	return nil
 }
 
+var baseurlptr = flag.String("b", "", "BASE_URL")
+var srvaddrptr = flag.String("a", "", "SERVER_ADDRESS")
+var fpathptr = flag.String("f", "", "FILE_STORAGE_PATH")
+var dbpathptr = flag.String("d", "", "DATABASE_DSN")
+
 //ReadCli - чтение флагов командной строки
 func (cfg *Config) readCli() {
-	baseurlptr := flag.String("b", "", "BASE_URL")
-	srvaddrptr := flag.String("a", "", "SERVER_ADDRESS")
-	fpathptr := flag.String("f", "", "FILE_STORAGE_PATH")
-	dbpathptr := flag.String("d", "", "DATABASE_DSN")
 	flag.Parse()
 	if isFlagPassed("b") {
 		cfg.BaseURL = *baseurlptr
