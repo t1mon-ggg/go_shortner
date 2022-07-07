@@ -1,0 +1,201 @@
+basePath: /
+definitions:
+  webhandlers.answer:
+    properties:
+      original_url:
+        type: string
+      short_url:
+        type: string
+    type: object
+  webhandlers.input:
+    properties:
+      correlation_id:
+        type: string
+      original_url:
+        type: string
+    type: object
+  webhandlers.lURL:
+    properties:
+      url:
+        type: string
+    type: object
+  webhandlers.output:
+    properties:
+      correlation_id:
+        type: string
+      short_url:
+        type: string
+    type: object
+  webhandlers.sURL:
+    properties:
+      result:
+        type: string
+    type: object
+host: 127.0.0.1:8080
+info:
+  contact:
+    email: t1mon.ggg@yandex.ru
+  description: Сервис сокращения ссылок
+  title: URL SHORTNER API
+  version: "1.0"
+paths:
+  /:
+    get:
+      consumes:
+      - text/plain
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Проверка подключения к хранилищу успешно завершено
+        "500":
+          description: Хранилище недоступно
+      summary: Запрос состояния хранилища
+      tags:
+      - Ping
+    post:
+      consumes:
+      - text/plain
+      parameters:
+      - description: Сокращаемый URL
+        in: body
+        name: Input
+        required: true
+        schema:
+          type: string
+      - description: Идентификационный cookie Client_ID
+        in: header
+        name: Client_ID
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "201":
+          description: Создана новая сокращенная ссылка
+          schema:
+            type: string
+        "409":
+          description: Запрашиваемый URL уже существует
+          schema:
+            type: string
+        "500":
+          description: Внутренняя ошибка сервера
+      summary: Запрос на сокращение ссылки
+      tags:
+      - Create
+  /api/shorten:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Идентификационный cookie Client_ID
+        in: header
+        name: Client_ID
+        type: string
+      - description: Сокращаемый URL
+        in: body
+        name: Input
+        required: true
+        schema:
+          $ref: '#/definitions/webhandlers.lURL'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Создана новая сокращенная ссылка
+          schema:
+            $ref: '#/definitions/webhandlers.sURL'
+        "400":
+          description: Неверный запрос
+        "409":
+          description: Запрашиваемый URL уже существует
+          schema:
+            $ref: '#/definitions/webhandlers.sURL'
+        "500":
+          description: Внутренняя ошибка сервера
+      summary: Запрос на сокращение ссылки
+      tags:
+      - APICreate
+  /api/shorten/batch:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Идентификационный cookie Client_ID
+        in: header
+        name: Client_ID
+        type: string
+      - description: Список сокращаемых URLs
+        in: body
+        name: Input
+        required: true
+        schema:
+          $ref: '#/definitions/webhandlers.input'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Список успешно обработан
+          schema:
+            $ref: '#/definitions/webhandlers.output'
+        "400":
+          description: Неверный запрос
+        "500":
+          description: Внутренняя ошибка сервера
+      summary: Запрос на сокращение ссылок списком
+      tags:
+      - APICreate
+  /api/user/urls:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Список удаляемых коротких идентификаторов
+        in: body
+        name: Input
+        required: true
+        schema:
+          type: string
+      - description: Идентификационный cookie Client_ID
+        in: header
+        name: Client_ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Запрос принят в обработку
+        "500":
+          description: Внутренняя ошибка сервера
+      summary: Запрос на удаление короткой ссылки
+      tags:
+      - APIDelete
+    get:
+      consumes:
+      - text/plain
+      parameters:
+      - description: Идентификационный cookie Client_ID
+        in: header
+        name: Client_ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список сокращений пользователя
+          schema:
+            items:
+              $ref: '#/definitions/webhandlers.answer'
+            type: array
+        "202":
+          description: Сокращения в базе данных отсутствуют
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            type: string
+      summary: Запрос на получение всех сокращенных ссылок пользователя
+      tags:
+      - ListAll
+swagger: "2.0"
