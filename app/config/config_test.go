@@ -38,3 +38,53 @@ func TestOsVars_Read(t *testing.T) {
 		})
 	}
 }
+
+func TestConfig_NewStorage(t *testing.T) {
+	type fields struct {
+		BaseURL         string
+		ServerAddress   string
+		FileStoragePath string
+		Database        string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   func()
+	}{
+		// {
+		// 	name: "db",
+		// 	fields: fields{
+		// 		BaseURL:       "http://127.0.0.1:8080",
+		// 		ServerAddress: "127.0.0.1:8080",
+		// 		Database:      "postgresql://postgres:postgrespw@127.0.0.1:5432/praktikum?sslmode=disable",
+		// 	},
+		// },
+		{
+			name: "file",
+			fields: fields{
+				BaseURL:         "http://127.0.0.1:8080",
+				ServerAddress:   "127.0.0.1:8080",
+				FileStoragePath: "removeme.txt",
+			},
+		},
+		{
+			name: "inmem",
+			fields: fields{
+				BaseURL:       "http://127.0.0.1:8080",
+				ServerAddress: "127.0.0.1:8080",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &Config{
+				BaseURL:         tt.fields.BaseURL,
+				ServerAddress:   tt.fields.ServerAddress,
+				FileStoragePath: tt.fields.FileStoragePath,
+				Database:        tt.fields.Database,
+			}
+			_, err := cfg.NewStorage()
+			require.NoError(t, err)
+		})
+	}
+}
