@@ -10,18 +10,18 @@ import (
 	"github.com/t1mon-ggg/go_shortner/app/storage"
 )
 
-//Config configuration struct
+// Config configuration struct
 type Config struct {
-	BaseURL         string `env:"BASE_URL"`          //BaseURL - default url base.
-	ServerAddress   string `env:"SERVER_ADDRESS"`    //ServerAddress - adress where http server will start
-	FileStoragePath string `env:"FILE_STORAGE_PATH"` //FileStoragePath - path file storage
-	Database        string `env:"DATABASE_DSN"`      //Database - databse dsn connection string
+	BaseURL         string `env:"BASE_URL"`          // BaseURL - default url base.
+	ServerAddress   string `env:"SERVER_ADDRESS"`    // ServerAddress - adress where http server will start
+	FileStoragePath string `env:"FILE_STORAGE_PATH"` // FileStoragePath - path file storage
+	Database        string `env:"DATABASE_DSN"`      // Database - databse dsn connection string
 }
 
-//NewConfig - создание новой минимальной конфигурации, чтение переменных окружения и флагов коммандной строки
+// NewConfig - создание новой минимальной конфигурации, чтение переменных окружения и флагов коммандной строки
 func New() *Config {
 	s := Config{
-		BaseURL:         "http://127.0.0.1:8080",
+		BaseURL:         "http:// 127.0.0.1:8080",
 		ServerAddress:   "127.0.0.1:8080",
 		FileStoragePath: "",
 		Database:        "",
@@ -36,7 +36,7 @@ func New() *Config {
 	return &s
 }
 
-//ReadEnv - чтение переменных окружения
+// ReadEnv - чтение переменных окружения
 func (cfg *Config) readEnv() error {
 	var c Config
 	err := env.Parse(&c)
@@ -60,7 +60,7 @@ func (cfg *Config) readEnv() error {
 	return nil
 }
 
-//flags - map for flag iterate
+// flags - map for flag iterate
 var flags = map[string]string{
 	"b": "BASE_URL",
 	"a": "SERVER_ADDRESS",
@@ -68,7 +68,7 @@ var flags = map[string]string{
 	"d": "DATABASE_DSN",
 }
 
-//command line flags
+// command line flags
 var (
 	baseURL  = flag.String("b", "", flags["b"])
 	srvAddr  = flag.String("a", "", flags["a"])
@@ -76,7 +76,7 @@ var (
 	dbPath   = flag.String("d", "", flags["d"])
 )
 
-//ReadCli - чтение флагов командной строки
+// ReadCli - чтение флагов командной строки
 func (cfg *Config) readCli() {
 	flag.Parse()
 	for flag, info := range flags {
@@ -98,7 +98,7 @@ func (cfg *Config) readCli() {
 
 }
 
-//isFlagPassed - проверка применение флага
+// isFlagPassed - проверка применение флага
 func isFlagPassed(name string) bool {
 	found := false
 	flag.Visit(func(f *flag.Flag) {
@@ -109,7 +109,7 @@ func isFlagPassed(name string) bool {
 	return found
 }
 
-//NewStorage - создание хранилища
+// NewStorage - создание хранилища
 func (cfg *Config) NewStorage() (storage.Storage, error) {
 	if cfg.Database != "" {
 		s, err := storage.NewPostgreSQL(cfg.Database)

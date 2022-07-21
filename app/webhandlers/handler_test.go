@@ -98,7 +98,7 @@ func testRequest(t *testing.T, ts *httptest.Server, jar *cookiejar.Jar, method, 
 	return resp, string(respBody)
 }
 
-// Test_defaultGetHandler - тестирование корневого хендлера
+//  Test_defaultGetHandler - тестирование корневого хендлера
 func Test_defaultGetHandler(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -113,7 +113,7 @@ func Test_defaultGetHandler(t *testing.T) {
 	})
 }
 
-//Test_otherHandler - тестирование методов отличных от используемых
+// Test_otherHandler - тестирование методов отличных от используемых
 func Test_otherHandler(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -128,7 +128,7 @@ func Test_otherHandler(t *testing.T) {
 	})
 }
 
-//Test_CreateShortURL - тестирование создания короткой ссылки
+// Test_CreateShortURL - тестирование создания короткой ссылки
 func Test_CreateShortURL(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -137,7 +137,7 @@ func Test_CreateShortURL(t *testing.T) {
 		ctype := map[string]string{
 			"Content-Type": "text/plain; charset=utf-8",
 		}
-		response, body := testRequest(t, ts, jar, http.MethodPost, "/", "http://example.org/", ctype)
+		response, body := testRequest(t, ts, jar, http.MethodPost, "/", "http:// example.org/", ctype)
 		defer response.Body.Close()
 		require.Equal(t, http.StatusCreated, response.StatusCode)
 
@@ -149,11 +149,11 @@ func Test_CreateShortURL(t *testing.T) {
 	})
 }
 
-//Test_UnshortStatic - теститрование обратного преобразования короткой ссылки в исходную
+// Test_UnshortStatic - теститрование обратного преобразования короткой ссылки в исходную
 func Test_UnshortStatic(t *testing.T) {
 	type wanted struct {
-		statusCode int
 		body       string
+		statusCode int
 	}
 	type arg struct {
 		method string
@@ -227,13 +227,13 @@ func Test_UnshortStatic(t *testing.T) {
 
 				want: wanted{
 					statusCode: 307,
-					body:       "http://example.org",
+					body:       "http:// example.org",
 				},
 			},
 		},
 	}
 	jar, r, db := newServer(t)
-	db.Storage.Write(models.ClientData{Cookie: "cookie1", Key: "secret_key", Short: []models.ShortData{{Short: "abcdABCD", Long: "http://example.org"}}})
+	db.Storage.Write(models.ClientData{Cookie: "cookie1", Key: "secret_key", Short: []models.ShortData{{Short: "abcdABCD", Long: "http:// example.org"}}})
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 	for _, tt := range tests {
@@ -248,7 +248,7 @@ func Test_UnshortStatic(t *testing.T) {
 	}
 }
 
-//Test_2WayTest - теститрование обратного преобразования короткой ссылки в исходную
+// Test_2WayTest - теститрование обратного преобразования короткой ссылки в исходную
 func Test_2WayTest(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -257,7 +257,7 @@ func Test_2WayTest(t *testing.T) {
 		ctype := map[string]string{
 			"Content-Type": "text/plain; charset=utf-8",
 		}
-		expected := "http://example.org"
+		expected := "http:// example.org"
 		response1, body := testRequest(t, ts, jar, http.MethodPost, "/", expected, ctype)
 		defer response1.Body.Close()
 		require.Equal(t, http.StatusCreated, response1.StatusCode)
@@ -270,7 +270,7 @@ func Test_2WayTest(t *testing.T) {
 	})
 }
 
-//Test_APIShort - тестирование сокращателя через API
+// Test_APIShort - тестирование сокращателя через API
 func Test_APIShort(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -280,9 +280,9 @@ func Test_APIShort(t *testing.T) {
 			"Content-Type": "application/json",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
-		s := req{URL: "http://example.org"}
+		s := req{URL: "http:// example.org"}
 		b, err := json.Marshal(s)
 		require.NoError(t, err)
 		response, body := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
@@ -293,7 +293,7 @@ func Test_APIShort(t *testing.T) {
 	})
 }
 
-//Test_API2Way - тестирование двухстороннего обмена через API
+// Test_API2Way - тестирование двухстороннего обмена через API
 func Test_API2Way(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -303,12 +303,12 @@ func Test_API2Way(t *testing.T) {
 			"Content-Type": "application/json",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
 		type answer struct {
-			A string `json:"result"` //{"result":"<short_url>"}
+			A string `json:"result"` // {"result":"<short_url>"}
 		}
-		s := req{URL: "http://example.org"}
+		s := req{URL: "http:// example.org"}
 		b, err := json.Marshal(s)
 		require.NoError(t, err)
 		response, body := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
@@ -328,7 +328,7 @@ func Test_API2Way(t *testing.T) {
 	})
 }
 
-//Test_ZippedRequest - теститрование сжатого запроса
+// Test_ZippedRequest - теститрование сжатого запроса
 func Test_ZippedRequest(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -339,9 +339,9 @@ func Test_ZippedRequest(t *testing.T) {
 			"Content-Encoding": "gzip",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
-		s := req{URL: "http://example.org"}
+		s := req{URL: "http:// example.org"}
 		b, err := json.Marshal(s)
 		require.NoError(t, err)
 		response, body := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
@@ -352,7 +352,7 @@ func Test_ZippedRequest(t *testing.T) {
 	})
 }
 
-//Test_ZippedAnswer - тестирование сжатия ответа с сервера
+// Test_ZippedAnswer - тестирование сжатия ответа с сервера
 func Test_ZippedAnswer(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -363,9 +363,9 @@ func Test_ZippedAnswer(t *testing.T) {
 			"Accept-Encoding": "gzip",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
-		s := req{URL: "http://example.org"}
+		s := req{URL: "http:// example.org"}
 		b, err := json.Marshal(s)
 		require.NoError(t, err)
 		response, body := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
@@ -379,7 +379,7 @@ func Test_ZippedAnswer(t *testing.T) {
 	})
 }
 
-//Test_2WayZip - тестирование работы со сжатием данных в обе стороны
+// Test_2WayZip - тестирование работы со сжатием данных в обе стороны
 func Test_2WayZip(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -391,9 +391,9 @@ func Test_2WayZip(t *testing.T) {
 			"Content-Encoding": "gzip",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
-		s := req{URL: "http://example.org"}
+		s := req{URL: "http:// example.org"}
 		b, err := json.Marshal(s)
 		require.NoError(t, err)
 		response, body := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
@@ -407,11 +407,11 @@ func Test_2WayZip(t *testing.T) {
 	})
 }
 
-//Test_UserURLs - тестиирование получения всех ссылок пользователя
+// Test_UserURLs - тестиирование получения всех ссылок пользователя
 func Test_UserURLs(t *testing.T) {
 	type wanted struct {
-		statusCode int
 		body       string
+		statusCode int
 	}
 	type arg struct {
 		method string
@@ -482,11 +482,11 @@ func Test_UserURLs(t *testing.T) {
 				defer response.Body.Close()
 				require.Equal(t, http.StatusNoContent, response.StatusCode)
 			case "Existent cookie":
-				response, _ := testRequest(t, ts, jar, http.MethodPost, "/", "http://example.org", map[string]string{
+				response, _ := testRequest(t, ts, jar, http.MethodPost, "/", "http:// example.org", map[string]string{
 					"Content-Type": "text/plain; charset=utf-8"})
 				defer response.Body.Close()
 				require.Equal(t, http.StatusCreated, response.StatusCode)
-				response, _ = testRequest(t, ts, jar, http.MethodPost, "/", "http://example2.org", map[string]string{
+				response, _ = testRequest(t, ts, jar, http.MethodPost, "/", "http:// example2.org", map[string]string{
 					"Content-Type": "text/plain; charset=utf-8"})
 				defer response.Body.Close()
 				require.Equal(t, http.StatusCreated, response.StatusCode)
@@ -502,7 +502,7 @@ func Test_UserURLs(t *testing.T) {
 				err := json.Unmarshal([]byte(body), &d)
 				require.NoError(t, err)
 			case "Wrong cookie":
-				response, _ := testRequest(t, ts, jar, http.MethodPost, tt.args.query, "http://example3.org", tt.args.ctype)
+				response, _ := testRequest(t, ts, jar, http.MethodPost, tt.args.query, "http:// example3.org", tt.args.ctype)
 				defer response.Body.Close()
 				cookies := jar.Cookies(response.Request.URL)
 				var cvalues []string
@@ -517,7 +517,7 @@ func Test_UserURLs(t *testing.T) {
 				var mvalues []string
 				mvalues = make([]string, 0)
 				for _, m := range cookies {
-					mvalues = append(cvalues, m.Value)
+					mvalues = append(mvalues, m.Value)
 				}
 				require.NotEqual(t, cvalues, mvalues)
 
@@ -526,7 +526,7 @@ func Test_UserURLs(t *testing.T) {
 	}
 }
 
-//Test_Ping - тестирование хранилища
+// Test_Ping - тестирование хранилища
 func Test_Ping(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -541,7 +541,7 @@ func Test_Ping(t *testing.T) {
 	})
 }
 
-//Test_Delete - удаления тегов
+// Test_Delete - удаления тегов
 func Test_Delete(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -558,45 +558,45 @@ func Test_Delete(t *testing.T) {
 	defer response.Body.Close()
 	in := []input{
 		{Correlation: "12345",
-			Long: "http://example1.org"},
+			Long: "http:// example1.org"},
 		{Correlation: "12345",
-			Long: "http://example2.org"},
+			Long: "http:// example2.org"},
 		{Correlation: "12345",
-			Long: "http://example3.org"},
+			Long: "http:// example3.org"},
 		{Correlation: "12345",
-			Long: "http://example4.org"},
+			Long: "http:// example4.org"},
 		{Correlation: "12345",
-			Long: "http://example5.org"},
+			Long: "http:// example5.org"},
 		{Correlation: "12345",
-			Long: "http://example6.org"},
+			Long: "http:// example6.org"},
 		{Correlation: "12345",
-			Long: "http://example7.org"},
+			Long: "http:// example7.org"},
 		{Correlation: "12345",
-			Long: "http://example8.org"},
+			Long: "http:// example8.org"},
 		{Correlation: "12345",
-			Long: "http://example9.org"},
+			Long: "http:// example9.org"},
 		{Correlation: "12345",
-			Long: "http://example10.org"},
+			Long: "http:// example10.org"},
 		{Correlation: "12345",
-			Long: "http://example11.org"},
+			Long: "http:// example11.org"},
 		{Correlation: "12345",
-			Long: "http://example12.org"},
+			Long: "http:// example12.org"},
 		{Correlation: "12345",
-			Long: "http://example13.org"},
+			Long: "http:// example13.org"},
 		{Correlation: "12345",
-			Long: "http://example14.org"},
+			Long: "http:// example14.org"},
 		{Correlation: "12345",
-			Long: "http://example15.org"},
+			Long: "http:// example15.org"},
 		{Correlation: "12345",
-			Long: "http://example16.org"},
+			Long: "http:// example16.org"},
 		{Correlation: "12345",
-			Long: "http://example17.org"},
+			Long: "http:// example17.org"},
 		{Correlation: "12345",
-			Long: "http://example18.org"},
+			Long: "http:// example18.org"},
 		{Correlation: "12345",
-			Long: "http://example19.org"},
+			Long: "http:// example19.org"},
 		{Correlation: "12345",
-			Long: "http://example20.org"},
+			Long: "http:// example20.org"},
 	}
 	ctype := map[string]string{
 		"Content-Type": "application/json",
@@ -638,7 +638,7 @@ func Test_Delete(t *testing.T) {
 	}
 }
 
-//Test_BatchAPI - массовое заполнение базы
+// Test_BatchAPI - массовое заполнение базы
 func Test_BatchAPI(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -654,45 +654,45 @@ func Test_BatchAPI(t *testing.T) {
 
 	in := []input{
 		{Correlation: "12345",
-			Long: "http://example1.org"},
+			Long: "http:// example1.org"},
 		{Correlation: "12345",
-			Long: "http://example2.org"},
+			Long: "http:// example2.org"},
 		{Correlation: "12345",
-			Long: "http://example3.org"},
+			Long: "http:// example3.org"},
 		{Correlation: "12345",
-			Long: "http://example4.org"},
+			Long: "http:// example4.org"},
 		{Correlation: "12345",
-			Long: "http://example5.org"},
+			Long: "http:// example5.org"},
 		{Correlation: "12345",
-			Long: "http://example6.org"},
+			Long: "http:// example6.org"},
 		{Correlation: "12345",
-			Long: "http://example7.org"},
+			Long: "http:// example7.org"},
 		{Correlation: "12345",
-			Long: "http://example8.org"},
+			Long: "http:// example8.org"},
 		{Correlation: "12345",
-			Long: "http://example9.org"},
+			Long: "http:// example9.org"},
 		{Correlation: "12345",
-			Long: "http://example10.org"},
+			Long: "http:// example10.org"},
 		{Correlation: "12345",
-			Long: "http://example11.org"},
+			Long: "http:// example11.org"},
 		{Correlation: "12345",
-			Long: "http://example12.org"},
+			Long: "http:// example12.org"},
 		{Correlation: "12345",
-			Long: "http://example13.org"},
+			Long: "http:// example13.org"},
 		{Correlation: "12345",
-			Long: "http://example14.org"},
+			Long: "http:// example14.org"},
 		{Correlation: "12345",
-			Long: "http://example15.org"},
+			Long: "http:// example15.org"},
 		{Correlation: "12345",
-			Long: "http://example16.org"},
+			Long: "http:// example16.org"},
 		{Correlation: "12345",
-			Long: "http://example17.org"},
+			Long: "http:// example17.org"},
 		{Correlation: "12345",
-			Long: "http://example18.org"},
+			Long: "http:// example18.org"},
 		{Correlation: "12345",
-			Long: "http://example19.org"},
+			Long: "http:// example19.org"},
 		{Correlation: "12345",
-			Long: "http://example20.org"},
+			Long: "http:// example20.org"},
 	}
 	ctype := map[string]string{
 		"Content-Type": "application/json",
@@ -719,7 +719,7 @@ func Test_Conflict(t *testing.T) {
 		ctype := map[string]string{
 			"Content-Type": "text/plain; charset=utf-8",
 		}
-		s := "http://kiuerhv9unvr.org"
+		s := "http:// kiuerhv9unvr.org"
 		response, body1 := testRequest(t, ts, jar, http.MethodPost, "/", s, ctype)
 		defer response.Body.Close()
 		matched, err := regexp.Match(`http:\/\/\w+\.\w+\.\w\.\w:\d+\/\w{8}`, []byte(body1))
@@ -745,9 +745,9 @@ func Test_APIConflict(t *testing.T) {
 			"Content-Type": "application/json",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
-		s := req{URL: "http://kiuerhv9unvr.org"}
+		s := req{URL: "http:// kiuerhv9unvr.org"}
 		b, err := json.Marshal(s)
 		require.NoError(t, err)
 		response, body1 := testRequest(t, ts, jar, http.MethodPost, "/api/shorten", string(b), ctype)
