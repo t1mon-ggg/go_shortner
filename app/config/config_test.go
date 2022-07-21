@@ -49,15 +49,16 @@ func TestConfig_NewStorage(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
+		want   func()
 	}{
-		{
-			name: "db",
-			fields: fields{
-				BaseURL:       "http://127.0.0.1:8080",
-				ServerAddress: "127.0.0.1:8080",
-				Database:      "postgresql://postgres:postgrespw@127.0.0.1:5432/praktikum?sslmode=disable",
-			},
-		},
+		// {
+		// 	name: "db",
+		// 	fields: fields{
+		// 		BaseURL:       "http://127.0.0.1:8080",
+		// 		ServerAddress: "127.0.0.1:8080",
+		// 		Database:      "postgresql://postgres:postgrespw@127.0.0.1:5432/praktikum?sslmode=disable",
+		// 	},
+		// },
 		{
 			name: "file",
 			fields: fields{
