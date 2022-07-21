@@ -21,7 +21,7 @@ type Config struct {
 // NewConfig - создание новой минимальной конфигурации, чтение переменных окружения и флагов коммандной строки
 func New() *Config {
 	s := Config{
-		BaseURL:         "http:// 127.0.0.1:8080",
+		BaseURL:         "http://127.0.0.1:8080",
 		ServerAddress:   "127.0.0.1:8080",
 		FileStoragePath: "",
 		Database:        "",

@@ -277,9 +277,9 @@ func (application *App) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			jbody := sURL{ShortURL: fmt.Sprintf("%s/%s", application.Config.BaseURL, s)}
-			abody, errJson := json.Marshal(jbody)
-			if errJson != nil {
-				log.Println("JSON Marshal error", errJson)
+			abody, errJSON := json.Marshal(jbody)
+			if errJSON != nil {
+				log.Println("JSON Marshal error", errJSON)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
