@@ -61,7 +61,7 @@ func Test_FileDB_Write(t *testing.T) {
 			Short: []models.ShortData{
 				{
 					Short: "abcdABC1",
-					Long:  "http:// example1.org",
+					Long:  "http://example1.org",
 				},
 			},
 		},
@@ -71,7 +71,7 @@ func Test_FileDB_Write(t *testing.T) {
 			Short: []models.ShortData{
 				{
 					Short: "abcdABC2",
-					Long:  "http:// example2.org",
+					Long:  "http://example2.org",
 				},
 			},
 		},
@@ -81,7 +81,7 @@ func Test_FileDB_Write(t *testing.T) {
 			Short: []models.ShortData{
 				{
 					Short: "abcdABC3",
-					Long:  "http:// example3.org",
+					Long:  "http://example3.org",
 				},
 			},
 		},
@@ -103,7 +103,7 @@ func (f *fileStorage) testPrepare(t *testing.T) {
 			Short: []models.ShortData{
 				{
 					Short: "abcdABC1",
-					Long:  "http:// example1.org",
+					Long:  "http://example1.org",
 				},
 			},
 		},
@@ -113,7 +113,7 @@ func (f *fileStorage) testPrepare(t *testing.T) {
 			Short: []models.ShortData{
 				{
 					Short: "abcdABC2",
-					Long:  "http:// example2.org",
+					Long:  "http://example2.org",
 				},
 			},
 		},
@@ -123,7 +123,7 @@ func (f *fileStorage) testPrepare(t *testing.T) {
 			Short: []models.ShortData{
 				{
 					Short: "abcdABC3",
-					Long:  "http:// example3.org",
+					Long:  "http://example3.org",
 				},
 			},
 		},
@@ -144,7 +144,7 @@ func Test_FileDB_ReadByCookie(t *testing.T) {
 		Short: []models.ShortData{
 			{
 				Short: "abcdABC2",
-				Long:  "http:// example2.org",
+				Long:  "http://example2.org",
 			},
 		},
 	}
@@ -161,7 +161,7 @@ func Test_FileDB_ReadByTag(t *testing.T) {
 	f.testPrepare(t)
 	exp := models.ShortData{
 		Short: "abcdABC2",
-		Long:  "http:// example2.org",
+		Long:  "http://example2.org",
 	}
 	data, err := f.ReadByTag("abcdABC2")
 	require.NoError(t, err)
@@ -175,7 +175,7 @@ func Test_FileDB_TagByURL(t *testing.T) {
 	f := NewFile("createme.txt")
 	f.testPrepare(t)
 	exp := "abcdABC2"
-	data, err := f.TagByURL("http:// example2.org", "cookie2")
+	data, err := f.TagByURL("http://example2.org", "cookie2")
 	require.NoError(t, err)
 	require.Equal(t, exp, data)
 	err = os.Remove("createme.txt")
@@ -191,7 +191,7 @@ func Test_FileDB_Delete(t *testing.T) {
 		Short: []models.ShortData{
 			{
 				Short:   "abcdABC2",
-				Long:    "http:// example2.org",
+				Long:    "http://example2.org",
 				Deleted: true,
 			},
 		},
