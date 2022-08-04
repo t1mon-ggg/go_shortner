@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"encoding/json"
 	"log"
 	"os"
 	"syscall"
@@ -184,4 +185,108 @@ func TestConfig_NewListner(t *testing.T) {
 	}
 	require.NoError(t, clearAppErr)
 	require.NoError(t, secureAppErr)
+}
+
+func TestConfig_readEnv(t *testing.T) {
+	tests := []struct {
+		name   string
+		fields *config.Config
+	}{
+		{
+			name: "read env",
+			fields: &config.Config{
+				BaseURL:         "https://localhost",
+				ServerAddress:   "localhost:443",
+				FileStoragePath: "createme.txtx",
+				Database:        "",
+				Config:          "",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.fields.BaseURL != "" {
+				os.Setenv("BASE_URL", tt.fields.BaseURL)
+			}
+			if tt.fields.BaseURL != "" {
+				os.Setenv("SERVER_ADDRESS", tt.fields.ServerAddress)
+			}
+			if tt.fields.BaseURL != "" {
+				os.Setenv("FILE_STORAGE_PATH", tt.fields.FileStoragePath)
+			}
+			if tt.fields.Database != "" {
+				os.Setenv("DATABASE_DSN", tt.fields.Database)
+			}
+			if tt.fields.Crypto {
+				os.Setenv("ENABLE_HTTPS", "true")
+			}
+			if tt.fields.Config != "" {
+				os.Setenv("CONFIG", tt.fields.Config)
+			}
+			app := webhandlers.NewApp()
+			require.Equal(t, tt.fields, app.Config)
+		})
+	}
+}
+
+func TestConfig_readFlags(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want *config.Config
+	}{
+		{
+			name: "test flags",
+			args: []string{"-b", "https://localhost", "-a", "localhost:443", "-f", "createme.txt"},
+			want: &config.Config{
+				BaseURL:         "https://localhost",
+				ServerAddress:   "localhost:443",
+				FileStoragePath: "createme.txt",
+				Database:        "",
+				Config:          "",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Args = append(os.Args, tt.args...)
+			app := webhandlers.NewApp()
+			require.Equal(t, tt.want, app.Config)
+		})
+	}
+}
+
+func TestConfig_readFile(t *testing.T) {
+	tests := []struct {
+		name     string
+		fileName string
+		want     *config.Config
+	}{
+		{
+			name:     "test file",
+			fileName: "config.json",
+			want: &config.Config{
+				BaseURL:         "https://localhost",
+				ServerAddress:   "localhost:443",
+				FileStoragePath: "createme.txt",
+				Database:        "",
+				Config:          "config.json",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := os.OpenFile(tt.fileName, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
+			require.NoError(t, err)
+			jsonConfig, err := json.MarshalIndent(tt.want, "", "  ")
+			require.NoError(t, err)
+			f.Write(jsonConfig)
+			f.Close()
+			os.Setenv("CONFIG", tt.fileName)
+			app := webhandlers.NewApp()
+			require.Equal(t, tt.want, app.Config)
+			err = os.Remove(tt.fileName)
+			require.NoError(t, err)
+		})
+	}
 }

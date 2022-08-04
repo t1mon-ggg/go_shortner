@@ -17,7 +17,8 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/require"
-
+	_ "github.com/t1mon-ggg/go_shortner/api"
+	"github.com/t1mon-ggg/go_shortner/app/config"
 	"github.com/t1mon-ggg/go_shortner/app/models"
 )
 
@@ -726,4 +727,30 @@ func Test_APIConflict(t *testing.T) {
 		require.Equal(t, body1, body2)
 
 	})
+}
+
+func TestApp_NewStorage(t *testing.T) {
+	tests := []struct {
+		name   string
+		Config *config.Config
+	}{
+		{
+			name: "test create inmemory storage",
+			Config: &config.Config{
+				BaseURL:         "https://localhost",
+				ServerAddress:   "localhost:443",
+				FileStoragePath: "",
+				Database:        "",
+				Crypto:          true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := NewApp()
+			err := app.NewStorage()
+			require.NoError(t, err)
+			require.NotNil(t, app.Storage)
+		})
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"flag"
 	"fmt"
@@ -26,11 +27,12 @@ import (
 
 // Config configuration struct
 type Config struct {
-	BaseURL         string `env:"BASE_URL"`          // BaseURL - default url base.
-	ServerAddress   string `env:"SERVER_ADDRESS"`    // ServerAddress - adress where http server will start
-	FileStoragePath string `env:"FILE_STORAGE_PATH"` // FileStoragePath - path file storage
-	Database        string `env:"DATABASE_DSN"`      // Database - databse dsn connection string
-	Crypto          bool   `env:"ENABLE_HTTPS"`      // Crypto - enable https
+	BaseURL         string `env:"BASE_URL" json:"base_url"`                   // BaseURL - default url base.
+	ServerAddress   string `env:"SERVER_ADDRESS" json:"server_address"`       // ServerAddress - adress where http server will start
+	FileStoragePath string `env:"FILE_STORAGE_PATH" json:"file_storage_path"` // FileStoragePath - path file storage
+	Database        string `env:"DATABASE_DSN" json:"database_dsn"`           // Database - databse dsn connection string
+	Crypto          bool   `env:"ENABLE_HTTPS" json:"enable_https"`           // Crypto - enable https
+	Config          string `env:"CONFIG" json:"-"`                            // Config - configuration file path
 }
 
 // NewConfig - создание новой минимальной конфигурации, чтение переменных окружения и флагов коммандной строки
@@ -47,7 +49,10 @@ func New() *Config {
 		log.Fatal(err)
 	}
 	s.readCli()
-	resultconfig := fmt.Sprintf("Result config:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\n", s.BaseURL, s.ServerAddress, s.FileStoragePath, s.Database)
+	if s.Config != "" {
+		s.readFile()
+	}
+	resultconfig := fmt.Sprintf("Result config:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\n", s.BaseURL, s.ServerAddress, s.FileStoragePath, s.Database, s.Crypto, s.Config)
 	log.Println(resultconfig)
 	return &s
 }
@@ -74,7 +79,10 @@ func (cfg *Config) readEnv() error {
 	if c.Crypto {
 		cfg.Crypto = c.Crypto
 	}
-	parsed := fmt.Sprintf("Evironment parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto)
+	if c.Config != "" {
+		cfg.Config = c.Config
+	}
+	parsed := fmt.Sprintf("Evironment parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config)
 	log.Println(parsed)
 	return nil
 }
@@ -86,6 +94,7 @@ var flags = map[string]string{
 	"f": "FILE_STORAGE_PATH",
 	"d": "DATABASE_DSN",
 	"s": "ENABLE_HTTPS",
+	"c": "CONFIG",
 }
 
 // command line flags
@@ -95,7 +104,37 @@ var (
 	filePath = flag.String("f", "", flags["f"])
 	dbPath   = flag.String("d", "", flags["d"])
 	crypt    = flag.Bool("s", false, flags["s"])
+	confFile = flag.String("c", "", flags["c"])
 )
+
+func (cfg *Config) readFile() {
+	config, err := os.ReadFile(cfg.Config)
+	if err != nil {
+		log.Fatalln("configuration file path or name invalid", err)
+	}
+	c := Config{}
+	err = json.Unmarshal(config, &c)
+	if err != nil {
+		log.Fatalln("configuration is invalid", err)
+	}
+	if c.BaseURL != "" {
+		cfg.BaseURL = c.BaseURL
+	}
+	if c.ServerAddress != "" {
+		cfg.ServerAddress = c.ServerAddress
+	}
+	if c.FileStoragePath != "" {
+		cfg.FileStoragePath = c.FileStoragePath
+	}
+	if c.Database != "" {
+		cfg.Database = c.Database
+	}
+	if c.Crypto {
+		cfg.Crypto = c.Crypto
+	}
+	parsed := fmt.Sprintf("File parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config)
+	log.Println(parsed)
+}
 
 // ReadCli - чтение флагов командной строки
 func (cfg *Config) readCli() {
@@ -113,10 +152,12 @@ func (cfg *Config) readCli() {
 				cfg.Database = *dbPath
 			case "ENABLE_HTTPS":
 				cfg.Crypto = *crypt
+			case "CONFIG":
+				cfg.Config = *confFile
 			}
 		}
 	}
-	parsed := fmt.Sprintf("Flags parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\n", *baseURL, *srvAddr, *filePath, *dbPath, *crypt)
+	parsed := fmt.Sprintf("Flags parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\n", *baseURL, *srvAddr, *filePath, *dbPath, *crypt, *confFile)
 	log.Println(parsed)
 
 }
