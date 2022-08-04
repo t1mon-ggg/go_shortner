@@ -233,16 +233,22 @@ func (f *fileStorage) deleteTag(task models.DelWorker) {
 }
 
 // Cleaner - delete task worker creator
-func (f *fileStorage) Cleaner(inputCh <-chan models.DelWorker, workers int) {
-	fanOutChs := helpers.FanOut(inputCh, workers)
+func (f *fileStorage) Cleaner(done <-chan os.Signal, wg *sync.WaitGroup, inputCh <-chan models.DelWorker, workers int) {
+	fanOutChs := helpers.FanOut(wg, inputCh, workers)
 	for _, fanOutCh := range fanOutChs {
-		go f.newWorker(fanOutCh)
+		go f.newWorker(done, wg, fanOutCh)
 	}
 }
 
 // newWorker - delete task worker
-func (f *fileStorage) newWorker(input <-chan models.DelWorker) {
-	for task := range input {
-		f.deleteTag(task)
+func (f *fileStorage) newWorker(done <-chan os.Signal, wg *sync.WaitGroup, input <-chan models.DelWorker) {
+	for {
+		select {
+		case task := <-input:
+			f.deleteTag(task)
+		case <-done:
+			wg.Done()
+			return
+		}
 	}
 }

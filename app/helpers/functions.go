@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"sync"
 
 	"github.com/jackc/pgerrcode"
 	"github.com/lib/pq"
@@ -105,7 +106,8 @@ func RandStringRunes(n int) string {
 }
 
 // FanOut - function for FunOut pattern
-func FanOut(inputCh <-chan models.DelWorker, workers int) []chan models.DelWorker {
+func FanOut(wg *sync.WaitGroup, inputCh <-chan models.DelWorker, workers int) []chan models.DelWorker {
+	wg.Add(workers)
 	chs := make([]chan models.DelWorker, 0, workers)
 	for i := 0; i < workers; i++ {
 		ch := make(chan models.DelWorker)

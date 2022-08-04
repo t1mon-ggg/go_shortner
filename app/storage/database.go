@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"sync"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -245,10 +247,10 @@ func (s *postgres) Write(data models.ClientData) error {
 }
 
 // Cleaner - delete task worker creator
-func (s *postgres) Cleaner(inputCh <-chan models.DelWorker, workers int) {
-	fanOutChs := helpers.FanOut(inputCh, workers)
+func (s *postgres) Cleaner(done <-chan os.Signal, wg *sync.WaitGroup, inputCh <-chan models.DelWorker, workers int) {
+	fanOutChs := helpers.FanOut(wg, inputCh, workers)
 	for _, fanOutCh := range fanOutChs {
-		go s.newWorker(fanOutCh)
+		go s.newWorker(done, wg, fanOutCh)
 	}
 }
 
@@ -279,8 +281,14 @@ func (s *postgres) deleteTag(task models.DelWorker) {
 }
 
 // newWorker - delete task worker
-func (s *postgres) newWorker(input <-chan models.DelWorker) {
-	for task := range input {
-		s.deleteTag(task)
+func (s *postgres) newWorker(done <-chan os.Signal, wg *sync.WaitGroup, input <-chan models.DelWorker) {
+	for {
+		select {
+		case task := <-input:
+			s.deleteTag(task)
+		case <-done:
+			wg.Done()
+			return
+		}
 	}
 }

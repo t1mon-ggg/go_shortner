@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -260,7 +261,8 @@ func TestFanOut(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := FanOut(make(<-chan models.DelWorker), tt.args.workers)
+			wg := sync.WaitGroup{}
+			got := FanOut(&wg, make(<-chan models.DelWorker), tt.args.workers)
 			require.Equal(t, tt.want, len(got))
 		})
 	}

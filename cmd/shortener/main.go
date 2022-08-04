@@ -33,5 +33,8 @@ func main() {
 		log.Fatalln("Coud not set storage", err)
 	}
 	r := application.NewWebProcessor(10)
-	application.Config.NewListner(r)
+	err = application.Config.NewListner(application.Signal(), application.Wait(), r)
+	if err != nil {
+		log.Println("application start failed with error:", err)
+	}
 }

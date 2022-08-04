@@ -9,7 +9,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"regexp"
+	"sync"
+	"syscall"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -37,6 +41,8 @@ type App struct {
 	Storage storage.Storage
 	Config  *config.Config
 	DelBuf  chan models.DelWorker
+	wg      *sync.WaitGroup
+	done    chan os.Signal
 }
 
 type answer struct {
@@ -70,6 +76,16 @@ func NewApp() *App {
 	return &s
 }
 
+// Wait - return application sync.WaitGroup pointer
+func (application *App) Wait() *sync.WaitGroup {
+	return application.wg
+}
+
+// Signal - return os.Signal channel
+func (application *App) Signal() chan os.Signal {
+	return application.done
+}
+
 func (application *App) NewStorage() error {
 	var err error
 	application.Storage, err = application.Config.NewStorage()
@@ -82,7 +98,10 @@ func (application *App) NewStorage() error {
 // NewWebProcessor - создание новго роутера для обработки веб запросов
 //  workers int - количество потоков для удаления сокращенных ссылок
 func (application *App) NewWebProcessor(workers int) *chi.Mux {
-	go application.Storage.Cleaner(application.DelBuf, workers)
+	application.done = make(chan os.Signal, 1)
+	application.wg = &sync.WaitGroup{}
+	signal.Notify(application.done, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	go application.Storage.Cleaner(application.done, application.wg, application.DelBuf, workers)
 	r := chi.NewRouter()
 	application.middlewares(r)
 	r.Route("/", application.router)

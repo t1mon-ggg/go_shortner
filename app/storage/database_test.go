@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -28,7 +29,8 @@ func init() {
 	t = &testing.T{}
 
 	inputCh = make(chan models.DelWorker)
-	fanOutChs := helpers.FanOut(inputCh, 2)
+	wg := sync.WaitGroup{}
+	fanOutChs := helpers.FanOut(&wg, inputCh, 2)
 	for _, fanOutCh := range fanOutChs {
 		go newWorker(t, fanOutCh)
 	}

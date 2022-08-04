@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"context"
 	crand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -16,8 +17,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
+	"sync"
 	"time"
 
 	"github.com/caarlos0/env"
@@ -190,16 +190,14 @@ func (cfg *Config) NewStorage() (storage.Storage, error) {
 	return s, nil
 }
 
-func (cfg *Config) NewListner(handler http.Handler) error {
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
+func (cfg *Config) NewListner(done <-chan os.Signal, wg *sync.WaitGroup, handler http.Handler) error {
 	listenerErr := make(chan error)
+	srv := &http.Server{
+		Addr:    cfg.ServerAddress,
+		Handler: handler,
+	}
 	if cfg.Crypto {
 		go func(errCh chan error) {
-			srv := &http.Server{
-				Addr:    cfg.ServerAddress,
-				Handler: handler,
-			}
 			err := GenerateCerts()
 			if err != nil {
 				log.Fatalln("certificate error", err)
@@ -211,10 +209,6 @@ func (cfg *Config) NewListner(handler http.Handler) error {
 		log.Println("TLS Server Started")
 	} else {
 		go func(errCh chan error) {
-			srv := &http.Server{
-				Addr:    cfg.ServerAddress,
-				Handler: handler,
-			}
 			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				errCh <- err
 			}
@@ -222,11 +216,22 @@ func (cfg *Config) NewListner(handler http.Handler) error {
 		log.Println("Server Started")
 	}
 	select {
-	case <-done:
-		log.Print("Server Stopped")
+	case sig := <-done:
+		log.Println("recives os signal", sig)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(60*time.Second))
+		defer cancel()
+		err := srv.Shutdown(ctx)
+		if err != nil {
+			log.Println("Server Stopped with", err)
+			os.Exit(1)
+		} else {
+			wg.Wait()
+			log.Print("Server Stopped Gracefully")
+		}
 	case err := <-listenerErr:
 		return err
 	}
+	log.Println("Listner stopped")
 	return nil
 }
 

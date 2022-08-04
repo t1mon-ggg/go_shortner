@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -123,7 +124,6 @@ func Test_generateCerts(t *testing.T) {
 }
 
 func TestConfig_NewListner(t *testing.T) {
-	var secureAppErr, clearAppErr error
 	type fields struct {
 		BaseURL         string
 		ServerAddress   string
@@ -143,7 +143,6 @@ func TestConfig_NewListner(t *testing.T) {
 				ServerAddress: "127.0.0.1:8888",
 				Crypto:        false,
 			},
-			appErr: clearAppErr,
 		},
 		{
 			name: "secure",
@@ -152,12 +151,12 @@ func TestConfig_NewListner(t *testing.T) {
 				ServerAddress: "127.0.0.1:8443",
 				Crypto:        true,
 			},
-			appErr: secureAppErr,
 		},
 	}
-	var ends []bool
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			wg := sync.WaitGroup{}
+
 			app := webhandlers.App{}
 			app.Config = &config.Config{
 				BaseURL:         tt.fields.BaseURL,
@@ -170,21 +169,18 @@ func TestConfig_NewListner(t *testing.T) {
 			app.Storage, err = app.Config.NewStorage()
 			require.NoError(t, err)
 			r := app.NewWebProcessor(10)
-			go func() {
-				tt.appErr = app.Config.NewListner(r)
-				ends = append(ends, true)
-			}()
+			wg.Add(1)
+			go func(name string, wg *sync.WaitGroup) {
+				tt.appErr = app.Config.NewListner(app.Signal(), app.Wait(), r)
+				log.Printf("Check error in %v test. Err is %v", name, tt.appErr)
+				require.NoError(t, tt.appErr)
+				wg.Done()
+			}(tt.name, &wg)
+			time.Sleep(5 * time.Second)
+			app.Signal() <- syscall.SIGTERM
+			log.Printf("%v sigterm sent", tt.name)
 		})
 	}
-	time.Sleep(10 * time.Second)
-	log.Println("SIGTEM")
-	syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-	time.Sleep(3 * time.Second)
-	for _, status := range ends {
-		require.True(t, status)
-	}
-	require.NoError(t, clearAppErr)
-	require.NoError(t, secureAppErr)
 }
 
 func TestConfig_readEnv(t *testing.T) {
