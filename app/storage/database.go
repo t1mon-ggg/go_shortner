@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"sync"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -14,7 +16,7 @@ import (
 	"github.com/t1mon-ggg/go_shortner/app/models"
 )
 
-//SQL queries
+// SQL queries
 const (
 	schemaSQL = `
 	CREATE TABLE IF NOT EXISTS "ids" (
@@ -48,13 +50,13 @@ const (
 	tagDelete        = `UPDATE "urls" SET "deleted"=true WHERE "cookie"=$1 AND "short"=$2`
 )
 
-//Postgres - struct for postgres implementation
+// Postgres - struct for postgres implementation
 type postgres struct {
-	conn string  //строка подключения к базе данных
-	db   *sql.DB //дескриптор для работы с базой
+	db   *sql.DB // дескриптор для работы с базой
+	conn string  // строка подключения к базе данных
 }
 
-//NewPostgreSQL - создание ссылки на структуру для работы с базой данных
+// NewPostgreSQL - создание ссылки на структуру для работы с базой данных
 func NewPostgreSQL(s string) (*postgres, error) {
 	log.Println("DSN string:", s)
 	db := postgres{conn: s}
@@ -70,7 +72,7 @@ func NewPostgreSQL(s string) (*postgres, error) {
 	return &db, nil
 }
 
-//open - подключение к базу данных, создание схемы БД
+// open - подключение к базу данных, создание схемы БД
 func (s *postgres) open() error {
 	var err error
 	s.db, err = sql.Open("postgres", s.conn)
@@ -84,7 +86,7 @@ func (s *postgres) open() error {
 	return nil
 }
 
-//create - создание схемы БД
+// create - создание схемы БД
 func (s *postgres) create() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -96,7 +98,7 @@ func (s *postgres) create() error {
 	return nil
 }
 
-//Ping - проверка состояния соединения с базой данных
+// Ping - проверка состояния соединения с базой данных
 func (s *postgres) Ping() error {
 	log.Println("Check connection to PostgreSQL")
 	ctx := context.Background()
@@ -111,7 +113,7 @@ func (s *postgres) Ping() error {
 	return nil
 }
 
-//Close - закрытие дексриптора базы данных
+// Close - закрытие дексриптора базы данных
 func (s *postgres) Close() error {
 	err := s.db.Close()
 	if err != nil {
@@ -120,7 +122,7 @@ func (s *postgres) Close() error {
 	return nil
 }
 
-//ReadByCookie - чтение из базы данных
+// ReadByCookie - чтение из базы данных
 func (s *postgres) ReadByCookie(cookie string) (models.ClientData, error) {
 	a := models.ClientData{}
 	log.Println("Select from IDs")
@@ -159,7 +161,7 @@ func (s *postgres) ReadByCookie(cookie string) (models.ClientData, error) {
 	return a, nil
 }
 
-//ReadByURL - чтение из базы данных
+// ReadByURL - чтение из базы данных
 func (s *postgres) TagByURL(url, cookie string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -173,7 +175,7 @@ func (s *postgres) TagByURL(url, cookie string) (string, error) {
 	return short, nil
 }
 
-//ReadByTag - чтение из базы данных
+// ReadByTag - чтение из базы данных
 func (s *postgres) ReadByTag(tag string) (models.ShortData, error) {
 	m := models.ShortData{}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -195,13 +197,13 @@ func (s *postgres) ReadByTag(tag string) (models.ShortData, error) {
 	return m, nil
 }
 
-//Write - запись в базы данных
+// Write - запись в базы данных
 func (s *postgres) Write(data models.ClientData) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
+	ctxCookie, cancelCookie := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelCookie()
 	var count int
 	query := fmt.Sprintf(cookieSearch, data.Cookie)
-	err := s.db.QueryRowContext(ctx, query).Scan(&count)
+	err := s.db.QueryRowContext(ctxCookie, query).Scan(&count)
 	if err != nil {
 		return err
 	}
@@ -211,27 +213,27 @@ func (s *postgres) Write(data models.ClientData) error {
 	}
 	defer tx.Rollback()
 	if count == 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		defer cancel()
-		stmt1, err := tx.PrepareContext(ctx, writeIDs)
-		if err != nil {
-			return err
+		ctxTransaction, cancelTransaction := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancelTransaction()
+		stmt1, errTX := tx.PrepareContext(ctxTransaction, writeIDs)
+		if errTX != nil {
+			return errTX
 		}
 		defer stmt1.Close()
-		_, err = stmt1.ExecContext(ctx, data.Cookie, data.Key)
-		if err != nil {
-			return err
+		_, errTX = stmt1.ExecContext(ctxTransaction, data.Cookie, data.Key)
+		if errTX != nil {
+			return errTX
 		}
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-	stmt2, err := tx.PrepareContext(ctx, writeURLs)
+	ctxWrite, cancelWrite := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelWrite()
+	stmt2, err := tx.PrepareContext(ctxWrite, writeURLs)
 	if err != nil {
 		return err
 	}
 	defer stmt2.Close()
 	for _, value := range data.Short {
-		_, err = stmt2.ExecContext(ctx, data.Cookie, value.Short, value.Long)
+		_, err = stmt2.ExecContext(ctxWrite, data.Cookie, value.Short, value.Long)
 		if err != nil {
 			if helpers.UniqueViolationError(err) {
 				newerr := errors.New("not unique url")
@@ -244,15 +246,15 @@ func (s *postgres) Write(data models.ClientData) error {
 	return nil
 }
 
-//Cleaner - delete task worker creator
-func (s *postgres) Cleaner(inputCh <-chan models.DelWorker, workers int) {
-	fanOutChs := helpers.FanOut(inputCh, workers)
+// Cleaner - delete task worker creator
+func (s *postgres) Cleaner(done <-chan os.Signal, wg *sync.WaitGroup, inputCh <-chan models.DelWorker, workers int) {
+	fanOutChs := helpers.FanOut(wg, inputCh, workers)
 	for _, fanOutCh := range fanOutChs {
-		go s.newWorker(fanOutCh)
+		go s.newWorker(done, wg, fanOutCh)
 	}
 }
 
-//deleteTag - mark tag as deleted
+// deleteTag - mark tag as deleted
 func (s *postgres) deleteTag(task models.DelWorker) {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -278,9 +280,15 @@ func (s *postgres) deleteTag(task models.DelWorker) {
 	tx.Commit()
 }
 
-//newWorker - delete task worker
-func (s *postgres) newWorker(input <-chan models.DelWorker) {
-	for task := range input {
-		s.deleteTag(task)
+// newWorker - delete task worker
+func (s *postgres) newWorker(done <-chan os.Signal, wg *sync.WaitGroup, input <-chan models.DelWorker) {
+	for {
+		select {
+		case task := <-input:
+			s.deleteTag(task)
+		case <-done:
+			wg.Done()
+			return
+		}
 	}
 }
