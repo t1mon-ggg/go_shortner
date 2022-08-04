@@ -51,6 +51,8 @@ import (
 	"golang.org/x/tools/go/analysis/passes/unusedwrite"
 	"golang.org/x/tools/go/analysis/passes/usesgenerics"
 	"honnef.co/go/tools/staticcheck"
+
+	"github.com/t1mon-ggg/go_shortner/internal/linter"
 )
 
 type checks []*analysis.Analyzer
@@ -63,6 +65,12 @@ var (
 	extra   = flag.Bool("extra", false, "To add SA checks from https://github.com/go-critic/go-critic")
 	total   = flag.Bool("total", false, "To all checks")
 )
+
+// Requred - os.Exit linter
+func (c *checks) Requred() *checks {
+	*c = append(*c, linter.OsExitAnalyzer)
+	return c
+}
 
 // Builtin - add builtin analizers to check list
 func (c *checks) Builtin() *checks {
@@ -142,6 +150,7 @@ func (c *checks) Extra() *checks {
 
 func init() {
 	c = make(checks, 0)
+	c.Requred()
 	flag.Parse()
 	if *total {
 		c.Builtin()
