@@ -25,7 +25,6 @@ vendor/
 .sql
 cmd/shortener/storage
 createme.txt
-database_integration_test.go
 *.pem
 *.pprof
 cmd/pprof-runtime/main_test.go
