@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/t1mon-ggg/go_shortner/app/webhandlers"
 )
@@ -34,5 +33,5 @@ func main() {
 		log.Fatalln("Coud not set storage", err)
 	}
 	r := application.NewWebProcessor(10)
-	http.ListenAndServe(application.Config.ServerAddress, r)
+	application.Config.NewListner(r)
 }

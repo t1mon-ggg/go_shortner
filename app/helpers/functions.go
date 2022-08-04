@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"math/big"
+	"os"
 
 	"github.com/jackc/pgerrcode"
 	"github.com/lib/pq"
@@ -132,4 +133,13 @@ func FanOut(inputCh <-chan models.DelWorker, workers int) []chan models.DelWorke
 		}
 	}()
 	return chs
+}
+
+// FileExists - check file exist or not
+func FileExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

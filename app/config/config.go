@@ -1,9 +1,23 @@
 package config
 
 import (
+	"bytes"
+	crand "crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
+	mrand "math/rand"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/caarlos0/env"
 
@@ -16,6 +30,7 @@ type Config struct {
 	ServerAddress   string `env:"SERVER_ADDRESS"`    // ServerAddress - adress where http server will start
 	FileStoragePath string `env:"FILE_STORAGE_PATH"` // FileStoragePath - path file storage
 	Database        string `env:"DATABASE_DSN"`      // Database - databse dsn connection string
+	Crypto          bool   `env:"ENABLE_HTTPS"`      // Crypto - enable https
 }
 
 // NewConfig - создание новой минимальной конфигурации, чтение переменных окружения и флагов коммандной строки
@@ -25,6 +40,7 @@ func New() *Config {
 		ServerAddress:   "127.0.0.1:8080",
 		FileStoragePath: "",
 		Database:        "",
+		Crypto:          false,
 	}
 	err := s.readEnv()
 	if err != nil {
@@ -55,7 +71,10 @@ func (cfg *Config) readEnv() error {
 	if c.Database != "" {
 		cfg.Database = c.Database
 	}
-	parsed := fmt.Sprintf("Evironment parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database)
+	if c.Crypto {
+		cfg.Crypto = c.Crypto
+	}
+	parsed := fmt.Sprintf("Evironment parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto)
 	log.Println(parsed)
 	return nil
 }
@@ -66,6 +85,7 @@ var flags = map[string]string{
 	"a": "SERVER_ADDRESS",
 	"f": "FILE_STORAGE_PATH",
 	"d": "DATABASE_DSN",
+	"s": "ENABLE_HTTPS",
 }
 
 // command line flags
@@ -74,6 +94,7 @@ var (
 	srvAddr  = flag.String("a", "", flags["a"])
 	filePath = flag.String("f", "", flags["f"])
 	dbPath   = flag.String("d", "", flags["d"])
+	crypt    = flag.Bool("s", false, flags["s"])
 )
 
 // ReadCli - чтение флагов командной строки
@@ -90,10 +111,12 @@ func (cfg *Config) readCli() {
 				cfg.FileStoragePath = *filePath
 			case "DATABASE_DSN":
 				cfg.Database = *dbPath
+			case "ENABLE_HTTPS":
+				cfg.Crypto = *crypt
 			}
 		}
 	}
-	parsed := fmt.Sprintf("Flags parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\n", *baseURL, *srvAddr, *filePath, *dbPath)
+	parsed := fmt.Sprintf("Flags parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\n", *baseURL, *srvAddr, *filePath, *dbPath, *crypt)
 	log.Println(parsed)
 
 }
@@ -124,4 +147,107 @@ func (cfg *Config) NewStorage() (storage.Storage, error) {
 	}
 	s := storage.NewRAM()
 	return s, nil
+}
+
+func (cfg *Config) NewListner(handler http.Handler) error {
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
+	listenerErr := make(chan error)
+	if cfg.Crypto {
+		go func(errCh chan error) {
+			srv := &http.Server{
+				Addr:    cfg.ServerAddress,
+				Handler: handler,
+			}
+			err := GenerateCerts()
+			if err != nil {
+				log.Fatalln("certificate error", err)
+			}
+			if err := srv.ListenAndServeTLS("cert.pem", "key.pem"); err != nil && err != http.ErrServerClosed {
+				errCh <- err
+			}
+		}(listenerErr)
+		log.Println("TLS Server Started")
+	} else {
+		go func(errCh chan error) {
+			srv := &http.Server{
+				Addr:    cfg.ServerAddress,
+				Handler: handler,
+			}
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				errCh <- err
+			}
+		}(listenerErr)
+		log.Println("Server Started")
+	}
+	select {
+	case <-done:
+		log.Print("Server Stopped")
+	case err := <-listenerErr:
+		return err
+	}
+	return nil
+}
+
+// GenerateCerts - generate cert and key file in PEM format
+func GenerateCerts() error {
+	// создаём шаблон сертификата
+	cert := &x509.Certificate{
+		// указываем уникальный номер сертификата
+		SerialNumber: big.NewInt(mrand.Int63()),
+		// заполняем базовую информацию о владельце сертификата
+		Subject: pkix.Name{
+			Organization: []string{"Yandex.Praktikum"},
+			Country:      []string{"RU"},
+		},
+		// разрешаем использование сертификата для 127.0.0.1 и ::1
+		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		// сертификат верен, начиная со времени создания
+		NotBefore: time.Now(),
+		// время жизни сертификата — 10 лет
+		NotAfter:     time.Now().AddDate(10, 0, 0),
+		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		// устанавливаем использование ключа для цифровой подписи,
+		// а также клиентской и серверной авторизации
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:    x509.KeyUsageDigitalSignature,
+	}
+
+	// создаём новый приватный RSA-ключ длиной 4096 бит
+	// обратите внимание, что для генерации ключа и сертификата
+	// используется rand.Reader в качестве источника случайных данных
+	privateKey, err := rsa.GenerateKey(crand.Reader, 4096)
+	if err != nil {
+		return err
+	}
+
+	// создаём сертификат x.509
+	certBytes, err := x509.CreateCertificate(crand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		return err
+	}
+
+	// кодируем сертификат и ключ в формате PEM, который
+	// используется для хранения и обмена криптографическими ключами
+	var certPEM bytes.Buffer
+	pem.Encode(&certPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	})
+
+	var privateKeyPEM bytes.Buffer
+	pem.Encode(&privateKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	})
+
+	err = os.WriteFile("cert.pem", certPEM.Bytes(), 0664)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile("key.pem", privateKeyPEM.Bytes(), 0600)
+	if err != nil {
+		return err
+	}
+	return nil
 }

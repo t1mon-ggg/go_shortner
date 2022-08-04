@@ -38,6 +38,8 @@ func cpuProfile() {
 	}
 	defer f.Close() // error handling omitted for example
 	defer pprof.StopCPUProfile()
+	time.Sleep(240 * time.Second)
+
 }
 
 // memProfile - mem profiling
@@ -55,7 +57,7 @@ func memProfile() {
 func main() {
 	flag.Parse()
 	if *cpuprofile != "" {
-		cpuProfile()
+		go cpuProfile()
 	}
 
 	go shortner()

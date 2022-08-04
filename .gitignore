@@ -27,3 +27,5 @@ cmd/shortener/storage
 createme.txt
 database_integration_test.go
 main_test.go
+*.pem
+*.pprof
