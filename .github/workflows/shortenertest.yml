@@ -46,7 +46,7 @@ jobs:
         run: |
           cd cmd/shortener
           go build -o shortener
-
+ 
       - name: "Code increment #1"
         if: always()
         run: |

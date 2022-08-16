@@ -48,6 +48,8 @@ const (
 	writeIDs         = `INSERT INTO "ids" ("cookie", "key") VALUES ($1,$2)`
 	writeURLs        = `INSERT INTO "urls" ("cookie", "short", "long") VALUES ($1,$2,$3)`
 	tagDelete        = `UPDATE "urls" SET "deleted"=true WHERE "cookie"=$1 AND "short"=$2`
+	countUsers       = `select COUNT(cookie) from ids`
+	countURLs        = `select COUNT(short) from urls`
 )
 
 // Postgres - struct for postgres implementation
@@ -252,6 +254,23 @@ func (s *postgres) Cleaner(done <-chan os.Signal, wg *sync.WaitGroup, inputCh <-
 	for _, fanOutCh := range fanOutChs {
 		go s.newWorker(done, wg, fanOutCh)
 	}
+}
+
+// GetStats - get curent stats
+func (s *postgres) GetStats() (models.Stats, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	log.Printf("Executing \"%s\"\n", countUsers)
+	var users, urls int
+	err := s.db.QueryRowContext(ctx, countUsers).Scan(users)
+	if err != nil {
+		return models.Stats{}, err
+	}
+	err = s.db.QueryRowContext(ctx, countURLs).Scan(urls)
+	if err != nil {
+		return models.Stats{}, err
+	}
+	return models.Stats{Users: users, URLs: urls}, nil
 }
 
 // deleteTag - mark tag as deleted

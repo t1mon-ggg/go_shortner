@@ -3,5 +3,6 @@
     "base_url": "https://localhost:8443",
     "file_storage_path": "createme.txt",
     "database_dsn": "",
-    "enable_https": true
+    "enable_https": true,
+    "trusted_subnet": "127.0.0.0/8"
 }

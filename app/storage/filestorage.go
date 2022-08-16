@@ -204,6 +204,19 @@ func (f *fileStorage) ReadByTag(s string) (models.ShortData, error) {
 	return models.ShortData{}, nil
 }
 
+// GetStats - get stats from file
+func (f *fileStorage) GetStats() (models.Stats, error) {
+	data, err := f.readAllFile()
+	if err != nil {
+		return models.Stats{}, err
+	}
+	var urls int
+	for _, shorts := range data {
+		urls += len(shorts.Short)
+	}
+	return models.Stats{Users: len(data), URLs: urls}, nil
+}
+
 // deleteTag - mark tag as deleted in file storage
 func (f *fileStorage) deleteTag(task models.DelWorker) {
 	data, err := f.readAllFile()

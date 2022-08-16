@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -13,10 +14,11 @@ import (
 )
 
 var (
-	ctrl    *gomock.Controller
-	s       *mock_storage.MockStorage
-	t       *testing.T
-	inputCh chan models.DelWorker
+	ctrl     *gomock.Controller
+	s        *mock_storage.MockStorage
+	t        *testing.T
+	inputCh  chan models.DelWorker
+	signalCh chan os.Signal
 )
 
 func newWorker(t *testing.T, input <-chan models.DelWorker) {
@@ -29,6 +31,7 @@ func init() {
 	t = &testing.T{}
 
 	inputCh = make(chan models.DelWorker)
+	signalCh = make(chan os.Signal)
 	wg := sync.WaitGroup{}
 	fanOutChs := helpers.FanOut(&wg, inputCh, 2)
 	for _, fanOutCh := range fanOutChs {
@@ -113,7 +116,7 @@ func init() {
 	}).
 		Return(nil)
 	s.EXPECT().Close().Return(nil)
-	s.EXPECT().Cleaner(inputCh, 2)
+	s.EXPECT().Cleaner(signalCh, nil, inputCh, 2)
 
 }
 
@@ -198,7 +201,7 @@ func Test_Write(t *testing.T) {
 
 // Cleaner(<-chan models.DelWorker, int)
 func Test_Cleaner(t *testing.T) {
-	s.Cleaner(inputCh, 2)
+	s.Cleaner(signalCh, nil, inputCh, 2)
 	value := models.DelWorker{Cookie: "cookie3", Tags: []string{"AAAAAAAA"}}
 	inputCh <- value
 	time.Sleep(15 * time.Second)

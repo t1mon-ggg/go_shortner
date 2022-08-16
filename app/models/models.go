@@ -25,3 +25,9 @@ type DelTask struct {
 	Cookie string // Cookie - user identification
 	Tag    string // Short url tag
 }
+
+// Stats - struct for staticstics
+type Stats struct {
+	URLs  int `json:"urls"`  // total urls count
+	Users int `json:"users"` // total users count
+}

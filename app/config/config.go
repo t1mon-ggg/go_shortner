@@ -33,6 +33,7 @@ type Config struct {
 	Database        string `env:"DATABASE_DSN" json:"database_dsn"`           // Database - databse dsn connection string
 	Crypto          bool   `env:"ENABLE_HTTPS" json:"enable_https"`           // Crypto - enable https
 	Config          string `env:"CONFIG" json:"-"`                            // Config - configuration file path
+	TrustedSubnet   string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`       // TrustesSubnet - trusted subnet
 }
 
 // NewConfig - создание новой минимальной конфигурации, чтение переменных окружения и флагов коммандной строки
@@ -52,7 +53,7 @@ func New() *Config {
 	if s.Config != "" {
 		s.readFile()
 	}
-	resultconfig := fmt.Sprintf("Result config:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\n", s.BaseURL, s.ServerAddress, s.FileStoragePath, s.Database, s.Crypto, s.Config)
+	resultconfig := fmt.Sprintf("Result config:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\n", s.BaseURL, s.ServerAddress, s.FileStoragePath, s.Database, s.Crypto, s.Config, s.TrustedSubnet)
 	log.Println(resultconfig)
 	return &s
 }
@@ -82,7 +83,10 @@ func (cfg *Config) readEnv() error {
 	if c.Config != "" {
 		cfg.Config = c.Config
 	}
-	parsed := fmt.Sprintf("Evironment parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config)
+	if c.TrustedSubnet != "" {
+		cfg.TrustedSubnet = c.TrustedSubnet
+	}
+	parsed := fmt.Sprintf("Evironment parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config, c.TrustedSubnet)
 	log.Println(parsed)
 	return nil
 }
@@ -95,16 +99,18 @@ var flags = map[string]string{
 	"d": "DATABASE_DSN",
 	"s": "ENABLE_HTTPS",
 	"c": "CONFIG",
+	"t": "TRUSTED_SUBNET",
 }
 
 // command line flags
 var (
-	baseURL  = flag.String("b", "", flags["b"])
-	srvAddr  = flag.String("a", "", flags["a"])
-	filePath = flag.String("f", "", flags["f"])
-	dbPath   = flag.String("d", "", flags["d"])
-	crypt    = flag.Bool("s", false, flags["s"])
-	confFile = flag.String("c", "", flags["c"])
+	baseURL     = flag.String("b", "", flags["b"])
+	srvAddr     = flag.String("a", "", flags["a"])
+	filePath    = flag.String("f", "", flags["f"])
+	dbPath      = flag.String("d", "", flags["d"])
+	crypt       = flag.Bool("s", false, flags["s"])
+	confFile    = flag.String("c", "", flags["c"])
+	trustSubnet = flag.String("t", "", flags["t"])
 )
 
 func (cfg *Config) readFile() {
@@ -132,7 +138,10 @@ func (cfg *Config) readFile() {
 	if c.Crypto {
 		cfg.Crypto = c.Crypto
 	}
-	parsed := fmt.Sprintf("File parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config)
+	if c.TrustedSubnet != "" {
+		cfg.TrustedSubnet = c.TrustedSubnet
+	}
+	parsed := fmt.Sprintf("File parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config, c.TrustedSubnet)
 	log.Println(parsed)
 }
 
@@ -154,10 +163,12 @@ func (cfg *Config) readCli() {
 				cfg.Crypto = *crypt
 			case "CONFIG":
 				cfg.Config = *confFile
+			case "TRUSTED_SUBNET":
+				cfg.TrustedSubnet = *trustSubnet
 			}
 		}
 	}
-	parsed := fmt.Sprintf("Flags parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\n", *baseURL, *srvAddr, *filePath, *dbPath, *crypt, *confFile)
+	parsed := fmt.Sprintf("Flags parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\n", *baseURL, *srvAddr, *filePath, *dbPath, *crypt, *confFile, *trustSubnet)
 	log.Println(parsed)
 
 }

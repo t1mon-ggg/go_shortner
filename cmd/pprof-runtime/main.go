@@ -54,6 +54,7 @@ func memProfile() {
 	}
 	defer f.Close() // error handling omitted for example
 }
+
 func main() {
 	flag.Parse()
 	if *cpuprofile != "" {

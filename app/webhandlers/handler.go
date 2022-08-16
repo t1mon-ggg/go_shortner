@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -114,6 +115,7 @@ func (application *App) router(r chi.Router) {
 	r.Get("/ping", application.connectionTest)
 	r.Get("/{^[a-zA-Z]}", application.getHandler)
 	r.Get("/api/user/urls", application.userURLs)
+	r.Get("/api/internal/stats", application.getStats)
 	r.Post("/", application.postHandler)
 	r.Post("/api/shorten", application.postAPIHandler)
 	r.Post("/api/shorten/batch", application.postAPIBatch)
@@ -193,6 +195,56 @@ func (application *App) userURLs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(d)
+}
+
+// Create godoc
+// @Tags GetStats
+// @Summary Запрос статистики
+// @Accept text/plain
+// @Produce application/json
+// @Param Client_ID header string true "Идентификационный cookie Client_ID"
+// @Success 200 {array} answer "Статистика"
+// @Failure 500 {string} string "Внутренняя ошибка сервера"
+// @Router api/internal/stats [get]
+// userURLs - handler for "api/internal/stats" GET Method
+func (application *App) getStats(w http.ResponseWriter, r *http.Request) {
+	if application.Config.TrustedSubnet == "" {
+		log.Println("endpoint locked")
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	_, tSubnet, err := net.ParseCIDR(application.Config.TrustedSubnet)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	realIP := r.Header.Get("X-Real-IP")
+	if realIP == "" {
+		log.Println("Header X-Real-IP not provided")
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	if !tSubnet.Contains(net.ParseIP(realIP)) {
+		log.Println("Header X-Real-IP provides wrong ip")
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	stats, err := application.Storage.GetStats()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	sts, err := json.Marshal(stats)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Add("Content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(sts)
 }
 
 // Create godoc
