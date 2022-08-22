@@ -28,8 +28,6 @@ func newServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *App) {
 	db := NewApp()
 	db.Storage, err = db.Config.NewStorage()
 	require.NoError(t, err)
-	require.NoError(t, err)
-	require.NoError(t, err)
 	r := db.NewWebProcessor(10)
 	return jar, r, db
 }

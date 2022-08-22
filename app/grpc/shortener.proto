@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package grpc;
+
+option go_package = "grpc/proto";
+
+message SimpleShortRequest {
+  string url = 1;
+}
+message SimpleShortResponse {
+  string short = 1;
+}
+
+message SimpleUnshortRequest {
+  string short = 1;
+}
+message SimpleUnshortResponse {
+  string url = 1;
+}
+
+message PingRequest {}
+message PingResponse {}
+
+message APIUserURLRequest {}
+message APIUserURLResponse {
+  string urls =1;
+}
+
+message APIStatsRequest {}
+message APIStatsResponse {
+  string stats = 1;
+}
+
+message APIShortRequest {
+  string jsonurl = 1;
+}
+message APIShortResponse {
+  string jsonshort= 1;
+}
+
+message APIBatchShortRequest {
+  string jsonurls = 1;
+}
+message APIBatchShortResponse {
+  string jsonshorts= 1;
+}
+
+message APIUserShortDeleteRequest {
+  string urls = 1;
+}
+message APIUserShortDeleteResponse {}
+
+service Shortener {
+  rpc SimpleShort(SimpleShortRequest) returns (SimpleShortResponse);
+  rpc SimpleUnshort(SimpleUnshortRequest) returns (SimpleUnshortResponse);
+  rpc Ping(PingRequest) returns (PingResponse);
+  rpc APIUserURLs(APIUserURLRequest) returns (APIUserURLResponse);
+  rpc APIStats(APIStatsRequest) returns (APIStatsResponse);
+  rpc APIShort(APIShortRequest) returns (APIShortResponse);
+  rpc APIBatchShort(APIBatchShortRequest) returns (APIBatchShortResponse);
+  rpc APIUserShortDelete(APIUserShortDeleteRequest) returns (APIUserShortDeleteResponse);
+}
