@@ -79,7 +79,7 @@ func (data *ram) ReadByTag(s string) (models.ShortData, error) {
 // GetStats - get stats from memory
 func (data *ram) GetStats() (models.Stats, error) {
 	data.Mux.RLock()
-	defer data.Mux.Unlock()
+	defer data.Mux.RUnlock()
 	var urls int
 	for _, shorts := range data.DB {
 		urls += len(shorts.Short)

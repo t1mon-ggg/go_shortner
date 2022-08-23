@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"regexp"
+	"strings"
 
 	pb "github.com/t1mon-ggg/go_shortner/app/grpc/proto"
 	"github.com/t1mon-ggg/go_shortner/app/helpers"
@@ -268,12 +269,15 @@ func (server *grpcServer) APIStats(ctx context.Context, in *pb.APIStatsRequest) 
 	}
 	response := new(pb.APIStatsResponse)
 	p, _ := peer.FromContext(ctx)
-	ip := p.Addr.String()
+	ipport := p.Addr.String()
+	i := strings.Split(ipport, ":")
+	ip := i[0]
 	_, tSubnet, err := net.ParseCIDR(server.app.Config.TrustedSubnet)
 	if err != nil {
 		log.Println(err)
 		return nil, status.Error(codes.Unknown, "CIDR parse error")
 	}
+	log.Println("testing", ip, "in", tSubnet.String(), "or not")
 	if !tSubnet.Contains(net.ParseIP(ip)) {
 		log.Println("ip not in trust subnet")
 		return nil, status.Error(codes.PermissionDenied, "Permission Denied")

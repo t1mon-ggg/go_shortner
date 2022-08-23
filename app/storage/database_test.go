@@ -115,6 +115,7 @@ func init() {
 		},
 	}).
 		Return(nil)
+	s.EXPECT().GetStats().Return(models.Stats{URLs: 0, Users: 0})
 	s.EXPECT().Close().Return(nil)
 	s.EXPECT().Cleaner(signalCh, nil, inputCh, 2)
 
@@ -197,6 +198,13 @@ func Test_Write(t *testing.T) {
 	val, err := s.ReadByCookie("cookie22")
 	require.NoError(t, err)
 	require.Equal(t, e1, val)
+}
+
+func Test_GetStats(t *testing.T) {
+	e := models.Stats{URLs: 0, Users: 0}
+	val, err := s.GetStats()
+	require.NoError(t, err)
+	require.Equal(t, e, val)
 }
 
 // Cleaner(<-chan models.DelWorker, int)

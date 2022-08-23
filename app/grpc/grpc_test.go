@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"os"
 	"regexp"
 	"syscall"
 	"testing"
@@ -69,6 +70,20 @@ func Test_grpcServer_APIStats(t *testing.T) {
 	ctx := metadata.NewOutgoingContext(context.Background(), nil)
 	_, err = app.APIStats(ctx, request)
 	require.Error(t, err)
+	stop(g)
+	os.Setenv("TRUSTED_SUBNET", "127.0.0.0/8")
+	db = webhandlers.NewApp()
+	err = db.NewStorage()
+	require.NoError(t, err)
+	g = New(db)
+	go func() {
+		go db.Start()
+		g.Start()
+	}()
+	response, err := app.APIStats(ctx, request)
+	require.NoError(t, err)
+	require.NotEmpty(t, response.Stats)
+	t.Log(response.Stats)
 }
 
 func Test_grpcServer_Ping(t *testing.T) {
