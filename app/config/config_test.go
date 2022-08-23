@@ -196,6 +196,7 @@ func TestConfig_readEnv(t *testing.T) {
 				FileStoragePath: "createme.txtx",
 				Database:        "",
 				Config:          "",
+				GRPCAddress:     "127.0.0.1:3200",
 			},
 		},
 	}
@@ -219,6 +220,9 @@ func TestConfig_readEnv(t *testing.T) {
 			if tt.fields.Config != "" {
 				os.Setenv("CONFIG", tt.fields.Config)
 			}
+			if tt.fields.GRPCAddress != "" {
+				os.Setenv("GRPC_ADDRESS", tt.fields.GRPCAddress)
+			}
 			app := webhandlers.NewApp()
 			require.Equal(t, tt.fields, app.Config)
 		})
@@ -240,6 +244,7 @@ func TestConfig_readFlags(t *testing.T) {
 				FileStoragePath: "createme.txt",
 				Database:        "",
 				Config:          "",
+				GRPCAddress:     "127.0.0.1:3200",
 			},
 		},
 	}
@@ -267,6 +272,7 @@ func TestConfig_readFile(t *testing.T) {
 				FileStoragePath: "createme.txt",
 				Database:        "",
 				Config:          "config.json",
+				GRPCAddress:     "127.0.0.1:3200",
 			},
 		},
 	}

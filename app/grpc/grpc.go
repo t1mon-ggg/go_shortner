@@ -26,7 +26,7 @@ func tokenGen(key, value string) string {
 	h := hmac.New(sha256.New, []byte(key))
 	h.Write([]byte(value))
 	signed := h.Sum(nil)
-	return hex.EncodeToString(signed)
+	return fmt.Sprintf("%s%s", value, hex.EncodeToString(signed))
 }
 
 func saveToken(ctx context.Context) string {
@@ -95,16 +95,32 @@ func (server *grpcServer) grpcCookie(ctx context.Context, req interface{}, info 
 				log.Println("Token check failed. Regenerating")
 				value := helpers.RandStringRunes(32)
 				key := helpers.RandStringRunes(64)
+				entry := models.ClientData{}
+				entry.Cookie = value
+				entry.Key = key
+				entry.Short = make([]models.ShortData, 0)
+				err := server.app.Storage.Write(entry)
+				if err != nil {
+					return nil, status.Error(codes.Internal, "new cookie write error")
+				}
 				log.Println("New token:", tokenGen(key, value))
 				newmd := metadata.New(map[string]string{"Client_ID": tokenGen(key, value)})
 				newctx := metadata.NewIncomingContext(context.Background(), newmd)
 				return handler(newctx, req)
 			}
-
+			log.Println("token ok")
 		} else {
 			log.Println("Client_ID not found. Generating")
 			value := helpers.RandStringRunes(32)
 			key := helpers.RandStringRunes(64)
+			entry := models.ClientData{}
+			entry.Cookie = value
+			entry.Key = key
+			entry.Short = make([]models.ShortData, 0)
+			err := server.app.Storage.Write(entry)
+			if err != nil {
+				return nil, status.Error(codes.Internal, "new cookie write error")
+			}
 			log.Println("New token:", tokenGen(key, value))
 			newmd := metadata.Pairs("Client_ID", tokenGen(key, value))
 			newctx := metadata.NewIncomingContext(ctx, newmd)

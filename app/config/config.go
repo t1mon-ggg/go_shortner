@@ -55,7 +55,7 @@ func New() *Config {
 	if s.Config != "" {
 		s.readFile()
 	}
-	resultconfig := fmt.Sprintf("Result config:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\n", s.BaseURL, s.ServerAddress, s.FileStoragePath, s.Database, s.Crypto, s.Config, s.TrustedSubnet)
+	resultconfig := fmt.Sprintf("Result config:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\nGRPC_ADDRESS=%s\n", s.BaseURL, s.ServerAddress, s.FileStoragePath, s.Database, s.Crypto, s.Config, s.TrustedSubnet, s.GRPCAddress)
 	log.Println(resultconfig)
 	return &s
 }
@@ -91,7 +91,7 @@ func (cfg *Config) readEnv() error {
 	if c.GRPCAddress != "" {
 		cfg.GRPCAddress = c.GRPCAddress
 	}
-	parsed := fmt.Sprintf("Evironment parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config, c.TrustedSubnet)
+	parsed := fmt.Sprintf("Evironment parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\nGRPC_ADDRESS=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config, c.TrustedSubnet, c.GRPCAddress)
 	log.Println(parsed)
 	return nil
 }
@@ -151,7 +151,7 @@ func (cfg *Config) readFile() {
 	if c.GRPCAddress != "" {
 		cfg.GRPCAddress = c.GRPCAddress
 	}
-	parsed := fmt.Sprintf("File parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config, c.TrustedSubnet)
+	parsed := fmt.Sprintf("File parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\nGRPC_ADDRESS=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config, c.TrustedSubnet, c.GRPCAddress)
 	log.Println(parsed)
 }
 
@@ -180,7 +180,7 @@ func (cfg *Config) readCli() {
 			}
 		}
 	}
-	parsed := fmt.Sprintf("Flags parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\n", *baseURL, *srvAddr, *filePath, *dbPath, *crypt, *confFile, *trustSubnet)
+	parsed := fmt.Sprintf("Flags parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\nGRPC_ADDRESS=%s\n", *baseURL, *srvAddr, *filePath, *dbPath, *crypt, *confFile, *trustSubnet, *grpcAddr)
 	log.Println(parsed)
 
 }
