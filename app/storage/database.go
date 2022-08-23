@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"sync"
 	"time"
 
@@ -249,7 +248,7 @@ func (s *postgres) Write(data models.ClientData) error {
 }
 
 // Cleaner - delete task worker creator
-func (s *postgres) Cleaner(done <-chan os.Signal, wg *sync.WaitGroup, inputCh <-chan models.DelWorker, workers int) {
+func (s *postgres) Cleaner(done <-chan struct{}, wg *sync.WaitGroup, inputCh <-chan models.DelWorker, workers int) {
 	fanOutChs := helpers.FanOut(wg, inputCh, workers)
 	for _, fanOutCh := range fanOutChs {
 		go s.newWorker(done, wg, fanOutCh)
@@ -300,7 +299,7 @@ func (s *postgres) deleteTag(task models.DelWorker) {
 }
 
 // newWorker - delete task worker
-func (s *postgres) newWorker(done <-chan os.Signal, wg *sync.WaitGroup, input <-chan models.DelWorker) {
+func (s *postgres) newWorker(done <-chan struct{}, wg *sync.WaitGroup, input <-chan models.DelWorker) {
 	for {
 		select {
 		case task := <-input:

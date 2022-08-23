@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"os"
 	"sync"
 
 	"github.com/t1mon-ggg/go_shortner/app/helpers"
@@ -101,7 +100,7 @@ func (data ram) Ping() error {
 }
 
 // Cleaner - delete task worker creator
-func (data *ram) Cleaner(done <-chan os.Signal, wg *sync.WaitGroup, inputCh <-chan models.DelWorker, workers int) {
+func (data *ram) Cleaner(done <-chan struct{}, wg *sync.WaitGroup, inputCh <-chan models.DelWorker, workers int) {
 	fanOutChs := helpers.FanOut(wg, inputCh, workers)
 	for _, fanOutCh := range fanOutChs {
 		go data.newWorker(done, wg, fanOutCh)
@@ -125,7 +124,7 @@ func (data *ram) deleteTag(task models.DelWorker) {
 }
 
 // newWorker - delete task worker
-func (data *ram) newWorker(done <-chan os.Signal, wg *sync.WaitGroup, input <-chan models.DelWorker) {
+func (data *ram) newWorker(done <-chan struct{}, wg *sync.WaitGroup, input <-chan models.DelWorker) {
 	for {
 		select {
 		case task := <-input:

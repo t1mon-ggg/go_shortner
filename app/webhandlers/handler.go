@@ -43,6 +43,7 @@ type App struct {
 	Config  *config.Config
 	DelBuf  chan models.DelWorker
 	wg      *sync.WaitGroup
+	stop    chan struct{}
 	done    chan os.Signal
 }
 
@@ -87,6 +88,20 @@ func (application *App) Signal() chan os.Signal {
 	return application.done
 }
 
+// Stop - return stop channel
+func (application *App) StopSig() chan struct{} {
+	return application.stop
+}
+
+// Start - return stop channel
+func (application *App) Start() {
+	r := application.NewWebProcessor(10)
+	err := application.Config.NewListner(application.Signal(), application.StopSig(), application.Wait(), r)
+	if err != nil {
+		log.Println("application start failed with error:", err)
+	}
+}
+
 func (application *App) NewStorage() error {
 	var err error
 	application.Storage, err = application.Config.NewStorage()
@@ -100,9 +115,10 @@ func (application *App) NewStorage() error {
 //  workers int - количество потоков для удаления сокращенных ссылок
 func (application *App) NewWebProcessor(workers int) *chi.Mux {
 	application.done = make(chan os.Signal, 1)
+	application.stop = make(chan struct{})
 	application.wg = &sync.WaitGroup{}
 	signal.Notify(application.done, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	go application.Storage.Cleaner(application.done, application.wg, application.DelBuf, workers)
+	go application.Storage.Cleaner(application.stop, application.wg, application.DelBuf, workers)
 	r := chi.NewRouter()
 	application.middlewares(r)
 	r.Route("/", application.router)

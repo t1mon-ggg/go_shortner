@@ -171,7 +171,7 @@ func TestConfig_NewListner(t *testing.T) {
 			r := app.NewWebProcessor(10)
 			wg.Add(1)
 			go func(name string, wg *sync.WaitGroup) {
-				tt.appErr = app.Config.NewListner(app.Signal(), app.Wait(), r)
+				tt.appErr = app.Config.NewListner(app.Signal(), app.StopSig(), app.Wait(), r)
 				log.Printf("Check error in %v test. Err is %v", name, tt.appErr)
 				require.NoError(t, tt.appErr)
 				wg.Done()

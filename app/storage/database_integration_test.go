@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -141,12 +140,12 @@ func TestDBIntegrationWrite(t *testing.T) {
 // Cleaner(<-chan models.DelWorker, int)
 func TestDBIntegrationCleaner(t *testing.T) {
 	dbPreparation(t)
-	sig := make(chan os.Signal)
+	stop := make(chan struct{})
 	wg := sync.WaitGroup{}
 	inputCh := make(chan models.DelWorker)
 	db, err := NewPostgreSQL(testDSN)
 	require.NoError(t, err)
-	db.Cleaner(sig, &wg, inputCh, 2)
+	db.Cleaner(stop, &wg, inputCh, 2)
 	value := models.DelWorker{Cookie: "cookie3", Tags: []string{"AAAAAAAA"}}
 	inputCh <- value
 	time.Sleep(15 * time.Second)

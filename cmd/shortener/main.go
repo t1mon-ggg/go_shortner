@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
+	"sync"
 
+	"github.com/t1mon-ggg/go_shortner/app/grpc"
 	"github.com/t1mon-ggg/go_shortner/app/webhandlers"
 )
 
@@ -25,6 +27,21 @@ func init() {
 	}
 }
 
+func start(application *webhandlers.App) {
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		application.Start()
+		wg.Done()
+	}()
+	go func() {
+		grpc := grpc.New(application)
+		grpc.Start()
+		wg.Done()
+	}()
+	wg.Wait()
+}
+
 func main() {
 	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n\n", buildVersion, buildDate, buildCommit)
 	application := webhandlers.NewApp()
@@ -32,9 +49,5 @@ func main() {
 	if err != nil {
 		log.Fatalln("Coud not set storage", err)
 	}
-	r := application.NewWebProcessor(10)
-	err = application.Config.NewListner(application.Signal(), application.Wait(), r)
-	if err != nil {
-		log.Println("application start failed with error:", err)
-	}
+	start(application)
 }

@@ -40,20 +40,28 @@ func saveToken(ctx context.Context) string {
 	return token
 }
 
-func StartGRPC(app *webhandlers.App) error {
-	listen, err := net.Listen("tcp", ":3200")
+func New(app *webhandlers.App) *grpcServer {
+	s := new(grpcServer)
+	s.app = app
+	return s
+}
+
+func (server *grpcServer) Start() {
+	listen, err := net.Listen("tcp", server.app.Config.GRPCAddress)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
-	grpcEndpoint := new(grpcServer)
-	grpcEndpoint.app = app
-	s := grpc.NewServer(grpc.UnaryInterceptor(grpcEndpoint.grpcCookie))
-	pb.RegisterShortenerServer(s, grpcEndpoint)
+	s := grpc.NewServer(grpc.UnaryInterceptor(server.grpcCookie))
+	pb.RegisterShortenerServer(s, server)
 	log.Println("GRPC server started")
-	if err := s.Serve(listen); err != nil {
-		return err
-	}
-	return nil
+	go func() {
+		if err := s.Serve(listen); err != nil {
+			log.Fatal(err)
+		}
+	}()
+	<-server.app.StopSig()
+	log.Println("stopping grpc server gracefully")
+	s.GracefulStop()
 }
 
 type grpcServer struct {
@@ -192,7 +200,7 @@ func (server *grpcServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pin
 	if err != nil {
 		return nil, status.Error(codes.DataLoss, err.Error())
 	}
-	return nil, nil
+	return &pb.PingResponse{}, nil
 }
 
 func (server *grpcServer) APIUserURLs(ctx context.Context, in *pb.APIUserURLRequest) (*pb.APIUserURLResponse, error) {
@@ -395,6 +403,7 @@ func (server *grpcServer) APIUserShortDelete(ctx context.Context, in *pb.APIUser
 	cookie := saveToken(ctx)
 	re := regexp.MustCompile(`\w+`)
 	tags := re.FindAllString(in.Urls, -1)
+	log.Println("Task:", tags)
 	task := models.DelWorker{Cookie: cookie, Tags: tags}
 	server.app.DelBuf <- task
 	return response, nil

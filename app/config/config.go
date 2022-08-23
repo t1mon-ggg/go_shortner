@@ -34,12 +34,14 @@ type Config struct {
 	Crypto          bool   `env:"ENABLE_HTTPS" json:"enable_https"`           // Crypto - enable https
 	Config          string `env:"CONFIG" json:"-"`                            // Config - configuration file path
 	TrustedSubnet   string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`       // TrustesSubnet - trusted subnet
+	GRPCAddress     string `env:"GRPC_ADDRESS" json:"grpc_address"`           //GRPCAddress - grpc listner addrtess
 }
 
 // NewConfig - создание новой минимальной конфигурации, чтение переменных окружения и флагов коммандной строки
 func New() *Config {
 	s := Config{
 		BaseURL:         "http://127.0.0.1:8080",
+		GRPCAddress:     "127.0.0.1:3200",
 		ServerAddress:   "127.0.0.1:8080",
 		FileStoragePath: "",
 		Database:        "",
@@ -86,6 +88,9 @@ func (cfg *Config) readEnv() error {
 	if c.TrustedSubnet != "" {
 		cfg.TrustedSubnet = c.TrustedSubnet
 	}
+	if c.GRPCAddress != "" {
+		cfg.GRPCAddress = c.GRPCAddress
+	}
 	parsed := fmt.Sprintf("Evironment parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config, c.TrustedSubnet)
 	log.Println(parsed)
 	return nil
@@ -100,12 +105,14 @@ var flags = map[string]string{
 	"s": "ENABLE_HTTPS",
 	"c": "CONFIG",
 	"t": "TRUSTED_SUBNET",
+	"g": "GRPCAddress",
 }
 
 // command line flags
 var (
 	baseURL     = flag.String("b", "", flags["b"])
 	srvAddr     = flag.String("a", "", flags["a"])
+	grpcAddr    = flag.String("g", "", flags["g"])
 	filePath    = flag.String("f", "", flags["f"])
 	dbPath      = flag.String("d", "", flags["d"])
 	crypt       = flag.Bool("s", false, flags["s"])
@@ -141,6 +148,9 @@ func (cfg *Config) readFile() {
 	if c.TrustedSubnet != "" {
 		cfg.TrustedSubnet = c.TrustedSubnet
 	}
+	if c.GRPCAddress != "" {
+		cfg.GRPCAddress = c.GRPCAddress
+	}
 	parsed := fmt.Sprintf("File parsed:\nBASE_URL=%s\nSERVER_ADDRESS=%s\nFILE_STORAGE_PATH=%s\nDATABASE_DSN=%s\nENABLE_HTTPS=%v\nCONFIG=%s\nTRUSTED_SUBNET=%s\n", c.BaseURL, c.ServerAddress, c.FileStoragePath, c.Database, c.Crypto, c.Config, c.TrustedSubnet)
 	log.Println(parsed)
 }
@@ -165,6 +175,8 @@ func (cfg *Config) readCli() {
 				cfg.Config = *confFile
 			case "TRUSTED_SUBNET":
 				cfg.TrustedSubnet = *trustSubnet
+			case "GRPCAddress":
+				cfg.GRPCAddress = *grpcAddr
 			}
 		}
 	}
@@ -201,7 +213,7 @@ func (cfg *Config) NewStorage() (storage.Storage, error) {
 	return s, nil
 }
 
-func (cfg *Config) NewListner(done <-chan os.Signal, wg *sync.WaitGroup, handler http.Handler) error {
+func (cfg *Config) NewListner(done <-chan os.Signal, stop chan struct{}, wg *sync.WaitGroup, handler http.Handler) error {
 	listenerErr := make(chan error)
 	srv := &http.Server{
 		Addr:    cfg.ServerAddress,
@@ -229,6 +241,7 @@ func (cfg *Config) NewListner(done <-chan os.Signal, wg *sync.WaitGroup, handler
 	select {
 	case sig := <-done:
 		log.Println("recives os signal", sig)
+		close(stop)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(60*time.Second))
 		defer cancel()
 		err := srv.Shutdown(ctx)
