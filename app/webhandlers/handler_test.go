@@ -10,15 +10,17 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"os"
 	"regexp"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/require"
-
-	"github.com/t1mon-ggg/go_shortner/app/helpers"
+	_ "github.com/t1mon-ggg/go_shortner/api"
+	"github.com/t1mon-ggg/go_shortner/app/config"
 	"github.com/t1mon-ggg/go_shortner/app/models"
 )
 
@@ -27,8 +29,6 @@ func newServer(t *testing.T) (*cookiejar.Jar, *chi.Mux, *App) {
 	require.NoError(t, err)
 	db := NewApp()
 	db.Storage, err = db.Config.NewStorage()
-	require.NoError(t, err)
-	require.NoError(t, err)
 	require.NoError(t, err)
 	r := db.NewWebProcessor(10)
 	return jar, r, db
@@ -98,7 +98,7 @@ func testRequest(t *testing.T, ts *httptest.Server, jar *cookiejar.Jar, method, 
 	return resp, string(respBody)
 }
 
-// Test_defaultGetHandler - тестирование корневого хендлера
+//  Test_defaultGetHandler - тестирование корневого хендлера
 func Test_defaultGetHandler(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -113,7 +113,7 @@ func Test_defaultGetHandler(t *testing.T) {
 	})
 }
 
-//Test_otherHandler - тестирование методов отличных от используемых
+// Test_otherHandler - тестирование методов отличных от используемых
 func Test_otherHandler(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -128,7 +128,7 @@ func Test_otherHandler(t *testing.T) {
 	})
 }
 
-//Test_CreateShortURL - тестирование создания короткой ссылки
+// Test_CreateShortURL - тестирование создания короткой ссылки
 func Test_CreateShortURL(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -149,11 +149,11 @@ func Test_CreateShortURL(t *testing.T) {
 	})
 }
 
-//Test_UnshortStatic - теститрование обратного преобразования короткой ссылки в исходную
+// Test_UnshortStatic - теститрование обратного преобразования короткой ссылки в исходную
 func Test_UnshortStatic(t *testing.T) {
 	type wanted struct {
-		statusCode int
 		body       string
+		statusCode int
 	}
 	type arg struct {
 		method string
@@ -248,7 +248,7 @@ func Test_UnshortStatic(t *testing.T) {
 	}
 }
 
-//Test_2WayTest - теститрование обратного преобразования короткой ссылки в исходную
+// Test_2WayTest - теститрование обратного преобразования короткой ссылки в исходную
 func Test_2WayTest(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -270,7 +270,7 @@ func Test_2WayTest(t *testing.T) {
 	})
 }
 
-//Test_APIShort - тестирование сокращателя через API
+// Test_APIShort - тестирование сокращателя через API
 func Test_APIShort(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -280,7 +280,7 @@ func Test_APIShort(t *testing.T) {
 			"Content-Type": "application/json",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
 		s := req{URL: "http://example.org"}
 		b, err := json.Marshal(s)
@@ -293,7 +293,7 @@ func Test_APIShort(t *testing.T) {
 	})
 }
 
-//Test_API2Way - тестирование двухстороннего обмена через API
+// Test_API2Way - тестирование двухстороннего обмена через API
 func Test_API2Way(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -303,10 +303,10 @@ func Test_API2Way(t *testing.T) {
 			"Content-Type": "application/json",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
 		type answer struct {
-			A string `json:"result"` //{"result":"<short_url>"}
+			A string `json:"result"` // {"result":"<short_url>"}
 		}
 		s := req{URL: "http://example.org"}
 		b, err := json.Marshal(s)
@@ -328,7 +328,7 @@ func Test_API2Way(t *testing.T) {
 	})
 }
 
-//Test_ZippedRequest - теститрование сжатого запроса
+// Test_ZippedRequest - теститрование сжатого запроса
 func Test_ZippedRequest(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -339,7 +339,7 @@ func Test_ZippedRequest(t *testing.T) {
 			"Content-Encoding": "gzip",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
 		s := req{URL: "http://example.org"}
 		b, err := json.Marshal(s)
@@ -352,7 +352,7 @@ func Test_ZippedRequest(t *testing.T) {
 	})
 }
 
-//Test_ZippedAnswer - тестирование сжатия ответа с сервера
+// Test_ZippedAnswer - тестирование сжатия ответа с сервера
 func Test_ZippedAnswer(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -363,7 +363,7 @@ func Test_ZippedAnswer(t *testing.T) {
 			"Accept-Encoding": "gzip",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
 		s := req{URL: "http://example.org"}
 		b, err := json.Marshal(s)
@@ -379,7 +379,7 @@ func Test_ZippedAnswer(t *testing.T) {
 	})
 }
 
-//Test_2WayZip - тестирование работы со сжатием данных в обе стороны
+// Test_2WayZip - тестирование работы со сжатием данных в обе стороны
 func Test_2WayZip(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -391,7 +391,7 @@ func Test_2WayZip(t *testing.T) {
 			"Content-Encoding": "gzip",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
 		s := req{URL: "http://example.org"}
 		b, err := json.Marshal(s)
@@ -407,11 +407,11 @@ func Test_2WayZip(t *testing.T) {
 	})
 }
 
-//Test_UserURLs - тестиирование получения всех ссылок пользователя
+// Test_UserURLs - тестирование получения всех ссылок пользователя
 func Test_UserURLs(t *testing.T) {
 	type wanted struct {
-		statusCode int
 		body       string
+		statusCode int
 	}
 	type arg struct {
 		method string
@@ -454,21 +454,6 @@ func Test_UserURLs(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "Wrong cookie",
-			args: arg{
-				method: http.MethodGet,
-				query:  "/",
-				body:   "",
-				ctype: map[string]string{
-					"Content-Type": "text/plain; charset=utf-8",
-				},
-				want: wanted{
-					statusCode: 0,
-					body:       "",
-				},
-			},
-		},
 	}
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -501,32 +486,12 @@ func Test_UserURLs(t *testing.T) {
 				d := make([]answer, 0)
 				err := json.Unmarshal([]byte(body), &d)
 				require.NoError(t, err)
-			case "Wrong cookie":
-				response, _ := testRequest(t, ts, jar, http.MethodPost, tt.args.query, "http://example3.org", tt.args.ctype)
-				defer response.Body.Close()
-				cookies := jar.Cookies(response.Request.URL)
-				var cvalues []string
-				cvalues = make([]string, 0)
-				for _, c := range cookies {
-					cvalues = append(cvalues, c.Value)
-					c.Value = helpers.RandStringRunes(96)
-				}
-				response, _ = testRequest(t, ts, jar, http.MethodGet, tt.args.query, "", tt.args.ctype)
-				defer response.Body.Close()
-				cookies = jar.Cookies(response.Request.URL)
-				var mvalues []string
-				mvalues = make([]string, 0)
-				for _, m := range cookies {
-					mvalues = append(cvalues, m.Value)
-				}
-				require.NotEqual(t, cvalues, mvalues)
-
 			}
 		})
 	}
 }
 
-//Test_Ping - тестирование хранилища
+// Test_Ping - тестирование хранилища
 func Test_Ping(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -541,7 +506,7 @@ func Test_Ping(t *testing.T) {
 	})
 }
 
-//Test_Delete - удаления тегов
+// Test_Delete - удаления тегов
 func Test_Delete(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -638,7 +603,7 @@ func Test_Delete(t *testing.T) {
 	}
 }
 
-//Test_BatchAPI - массовое заполнение базы
+// Test_BatchAPI - массовое заполнение базы
 func Test_BatchAPI(t *testing.T) {
 	jar, r, _ := newServer(t)
 	ts := httptest.NewServer(r)
@@ -745,7 +710,7 @@ func Test_APIConflict(t *testing.T) {
 			"Content-Type": "application/json",
 		}
 		type req struct {
-			URL string `json:"url"` //{"url":"<some_url>"}
+			URL string `json:"url"` // {"url":"<some_url>"}
 		}
 		s := req{URL: "http://kiuerhv9unvr.org"}
 		b, err := json.Marshal(s)
@@ -762,4 +727,202 @@ func Test_APIConflict(t *testing.T) {
 		require.Equal(t, body1, body2)
 
 	})
+}
+
+func TestApp_NewStorage(t *testing.T) {
+	tests := []struct {
+		name   string
+		Config *config.Config
+	}{
+		{
+			name: "test create inmemory storage",
+			Config: &config.Config{
+				BaseURL:         "https://localhost",
+				ServerAddress:   "localhost:443",
+				FileStoragePath: "",
+				Database:        "",
+				Crypto:          true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := NewApp()
+			err := app.NewStorage()
+			require.NoError(t, err)
+			require.NotNil(t, app.Storage)
+		})
+	}
+}
+
+func Test_GetStats1(t *testing.T) {
+	os.Setenv("TRUSTED_SUBNET", "127.0.0.0/8")
+	defer os.Unsetenv("TRUSTED_SUBNET")
+	jar, r, _ := newServer(t)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+	type arg struct {
+		ip   string
+		want int
+	}
+	tests := []struct {
+		name string
+		args arg
+	}{
+		{
+			name: "success",
+			args: arg{
+				ip:   "127.0.0.1",
+				want: http.StatusOK,
+			},
+		},
+		{
+			name: "forbidden",
+			args: arg{
+				ip:   "192.168.0.1",
+				want: http.StatusForbidden,
+			},
+		},
+		{
+			name: "no ip",
+			args: arg{
+				ip:   "",
+				want: http.StatusForbidden,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response, _ := testRequest(t, ts, jar, http.MethodGet, "/api/internal/stats", "", map[string]string{"X-Real-IP": tt.args.ip})
+			defer response.Body.Close()
+			require.Equal(t, tt.args.want, response.StatusCode)
+		})
+	}
+
+}
+
+func Test_GetStats2(t *testing.T) {
+	jar, r, _ := newServer(t)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+	type arg struct {
+		ip   string
+		want int
+	}
+	tests := []struct {
+		name string
+		args arg
+	}{
+		{
+			name: "success",
+			args: arg{
+				ip:   "127.0.0.1",
+				want: http.StatusForbidden,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response, _ := testRequest(t, ts, jar, http.MethodGet, "/api/internal/stats", "", map[string]string{"X-Real-IP": tt.args.ip})
+			defer response.Body.Close()
+			require.Equal(t, tt.args.want, response.StatusCode)
+		})
+	}
+
+}
+
+func TestApp_Wait(t *testing.T) {
+	tests := []struct {
+		name   string
+		Config *config.Config
+	}{
+		{
+			name: "test wg wait return func",
+			Config: &config.Config{
+				BaseURL:         "https://localhost",
+				ServerAddress:   "localhost:443",
+				FileStoragePath: "",
+				Database:        "",
+				Crypto:          true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := NewApp()
+			err := app.NewStorage()
+			require.NoError(t, err)
+			go app.Start()
+			defer func() {
+				app.Signal() <- syscall.SIGTERM
+			}()
+			time.Sleep(5 * time.Second)
+			require.NotNil(t, app.Wait())
+
+		})
+	}
+}
+
+func TestApp_Signal(t *testing.T) {
+	tests := []struct {
+		name   string
+		Config *config.Config
+	}{
+		{
+			name: "test signal return func",
+			Config: &config.Config{
+				BaseURL:         "https://localhost",
+				ServerAddress:   "localhost:443",
+				FileStoragePath: "",
+				Database:        "",
+				Crypto:          true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := NewApp()
+			err := app.NewStorage()
+			require.NoError(t, err)
+			go app.Start()
+			defer func() {
+				app.Signal() <- syscall.SIGTERM
+			}()
+			time.Sleep(5 * time.Second)
+			require.NotNil(t, app.Signal())
+
+		})
+	}
+}
+
+func TestApp_StopSig(t *testing.T) {
+	tests := []struct {
+		name   string
+		Config *config.Config
+	}{
+		{
+			name: "test signal return func",
+			Config: &config.Config{
+				BaseURL:         "https://localhost",
+				ServerAddress:   "localhost:443",
+				FileStoragePath: "",
+				Database:        "",
+				Crypto:          true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := NewApp()
+			err := app.NewStorage()
+			require.NoError(t, err)
+			go app.Start()
+			defer func() {
+				app.Signal() <- syscall.SIGTERM
+			}()
+			time.Sleep(5 * time.Second)
+			require.NotNil(t, app.StopSig())
+
+		})
+	}
 }

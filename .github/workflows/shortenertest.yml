@@ -10,7 +10,7 @@ jobs:
 
   shortenertest:
     runs-on: ubuntu-latest
-    container: golang:1.17
+    container: golang:1.18
 
     services:
       postgres:
@@ -46,7 +46,7 @@ jobs:
         run: |
           cd cmd/shortener
           go build -o shortener
-
+ 
       - name: "Code increment #1"
         if: always()
         run: |

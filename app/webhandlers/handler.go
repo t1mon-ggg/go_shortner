@@ -8,8 +8,13 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"regexp"
+	"sync"
+	"syscall"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -32,11 +37,14 @@ import (
 // @BasePath /
 // @Host 127.0.0.1:8080
 
-//App - application struct
+// App - application struct
 type App struct {
 	Storage storage.Storage
 	Config  *config.Config
 	DelBuf  chan models.DelWorker
+	wg      *sync.WaitGroup
+	stop    chan struct{}
+	done    chan os.Signal
 }
 
 type answer struct {
@@ -62,12 +70,36 @@ type lURL struct {
 	LongURL string `json:"url"`
 }
 
-//NewApp - функция для создания новой структуры для работы приложения
+// NewApp - функция для создания новой структуры для работы приложения
 func NewApp() *App {
 	s := App{}
 	s.Config = config.New()
 	s.DelBuf = make(chan models.DelWorker)
 	return &s
+}
+
+// Wait - return application sync.WaitGroup pointer
+func (application *App) Wait() *sync.WaitGroup {
+	return application.wg
+}
+
+// Signal - return os.Signal channel
+func (application *App) Signal() chan os.Signal {
+	return application.done
+}
+
+// Stop - return stop channel
+func (application *App) StopSig() chan struct{} {
+	return application.stop
+}
+
+// Start - return stop channel
+func (application *App) Start() {
+	r := application.NewWebProcessor(10)
+	err := application.Config.NewListner(application.Signal(), application.StopSig(), application.Wait(), r)
+	if err != nil {
+		log.Println("application start failed with error:", err)
+	}
 }
 
 func (application *App) NewStorage() error {
@@ -79,22 +111,27 @@ func (application *App) NewStorage() error {
 	return nil
 }
 
-//NewWebProcessor - создание новго роутера для обработки веб запросов
+// NewWebProcessor - создание новго роутера для обработки веб запросов
 //  workers int - количество потоков для удаления сокращенных ссылок
 func (application *App) NewWebProcessor(workers int) *chi.Mux {
-	go application.Storage.Cleaner(application.DelBuf, workers)
+	application.done = make(chan os.Signal, 1)
+	application.stop = make(chan struct{})
+	application.wg = &sync.WaitGroup{}
+	signal.Notify(application.done, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	go application.Storage.Cleaner(application.stop, application.wg, application.DelBuf, workers)
 	r := chi.NewRouter()
 	application.middlewares(r)
 	r.Route("/", application.router)
 	return r
 }
 
-//Router - creates chi router and cleaner
+// Router - creates chi router and cleaner
 func (application *App) router(r chi.Router) {
 	r.Get("/", defaultGetHandler)
 	r.Get("/ping", application.connectionTest)
 	r.Get("/{^[a-zA-Z]}", application.getHandler)
 	r.Get("/api/user/urls", application.userURLs)
+	r.Get("/api/internal/stats", application.getStats)
 	r.Post("/", application.postHandler)
 	r.Post("/api/shorten", application.postAPIHandler)
 	r.Post("/api/shorten/batch", application.postAPIBatch)
@@ -104,12 +141,12 @@ func (application *App) router(r chi.Router) {
 	r.NotFound(otherHandler)
 }
 
-//defaultGetHandler - handler for "/"
+// defaultGetHandler - handler for "/"
 func defaultGetHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Empty request", http.StatusBadRequest)
 }
 
-//otherHandler - handler for unknown request and unknow paths
+// otherHandler - handler for unknown request and unknow paths
 func otherHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Bad request", http.StatusBadRequest)
 }
@@ -177,6 +214,56 @@ func (application *App) userURLs(w http.ResponseWriter, r *http.Request) {
 }
 
 // Create godoc
+// @Tags GetStats
+// @Summary Запрос статистики
+// @Accept text/plain
+// @Produce application/json
+// @Param X-Real-IP header string true "IP адрес клиента в заголовке"
+// @Success 200 {array} answer "Статистика"
+// @Failure 500 {string} string "Внутренняя ошибка сервера"
+// @Router api/internal/stats [get]
+// userURLs - handler for "api/internal/stats" GET Method
+func (application *App) getStats(w http.ResponseWriter, r *http.Request) {
+	if application.Config.TrustedSubnet == "" {
+		log.Println("endpoint locked")
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	_, tSubnet, err := net.ParseCIDR(application.Config.TrustedSubnet)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	realIP := r.Header.Get("X-Real-IP")
+	if realIP == "" {
+		log.Println("Header X-Real-IP not provided")
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	if !tSubnet.Contains(net.ParseIP(realIP)) {
+		log.Println("Header X-Real-IP provides wrong ip")
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	stats, err := application.Storage.GetStats()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	sts, err := json.Marshal(stats)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Add("Content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(sts)
+}
+
+// Create godoc
 // @Tags Create
 // @Summary Запрос на сокращение ссылки
 // @Accept text/plain
@@ -208,9 +295,9 @@ func (application *App) postHandler(w http.ResponseWriter, r *http.Request) {
 	err = application.Storage.Write(entry)
 	if err != nil {
 		if err.Error() == "not unique url" {
-			s, err := application.Storage.TagByURL(slongURL, cookie)
-			if err != nil {
-				log.Println(err)
+			s, errTag := application.Storage.TagByURL(slongURL, cookie)
+			if errTag != nil {
+				log.Println(errTag)
 				http.Error(w, "Storage error", http.StatusInternalServerError)
 				return
 			}
@@ -270,16 +357,16 @@ func (application *App) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 	err = application.Storage.Write(entry)
 	if err != nil {
 		if err.Error() == "not unique url" {
-			s, err := application.Storage.TagByURL(longURL.LongURL, cookie)
-			if err != nil {
-				log.Println(err)
+			s, errTag := application.Storage.TagByURL(longURL.LongURL, cookie)
+			if errTag != nil {
+				log.Println(errTag)
 				http.Error(w, "Storage error", http.StatusInternalServerError)
 				return
 			}
-			jbody := sURL{ShortURL: fmt.Sprintf("%s/%s", (*application).Config.BaseURL, s)}
-			abody, err := json.Marshal(jbody)
-			if err != nil {
-				log.Println("JSON Marshal error", err)
+			jbody := sURL{ShortURL: fmt.Sprintf("%s/%s", application.Config.BaseURL, s)}
+			abody, errJSON := json.Marshal(jbody)
+			if errJSON != nil {
+				log.Println("JSON Marshal error", errJSON)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
@@ -294,7 +381,7 @@ func (application *App) postAPIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	jbody := sURL{ShortURL: fmt.Sprintf("%s/%s", (*application).Config.BaseURL, short)}
+	jbody := sURL{ShortURL: fmt.Sprintf("%s/%s", application.Config.BaseURL, short)}
 	abody, err := json.Marshal(jbody)
 	if err != nil {
 		log.Println("JSON Marshal error", err)
@@ -345,22 +432,22 @@ func (application *App) postAPIBatch(w http.ResponseWriter, r *http.Request) {
 		entry.Short = make([]models.ShortData, 0)
 		short := helpers.RandStringRunes(8)
 		entry.Short = append(entry.Short, models.ShortData{Short: short, Long: in[i].Long})
-		err := application.Storage.Write(entry)
-		if err != nil {
-			if err.Error() == "not unique url" {
-				s, err := application.Storage.TagByURL(in[i].Long, cookie)
-				if err != nil {
+		errWrite := application.Storage.Write(entry)
+		if errWrite != nil {
+			if errWrite.Error() == "not unique url" {
+				s, errTag := application.Storage.TagByURL(in[i].Long, cookie)
+				if errTag != nil {
 					http.Error(w, "Storage error", http.StatusInternalServerError)
 					return
 				}
-				out = append(out, output{Correlation: in[i].Correlation, Short: fmt.Sprintf("%s/%s", (*application).Config.BaseURL, s)})
+				out = append(out, output{Correlation: in[i].Correlation, Short: fmt.Sprintf("%s/%s", application.Config.BaseURL, s)})
 			} else {
 				log.Println(err)
 				http.Error(w, "Storage error", http.StatusInternalServerError)
 				return
 			}
 		} else {
-			out = append(out, output{Correlation: in[i].Correlation, Short: fmt.Sprintf("%s/%s", (*application).Config.BaseURL, short)})
+			out = append(out, output{Correlation: in[i].Correlation, Short: fmt.Sprintf("%s/%s", application.Config.BaseURL, short)})
 		}
 	}
 	batch, err := json.Marshal(out)
@@ -375,7 +462,7 @@ func (application *App) postAPIBatch(w http.ResponseWriter, r *http.Request) {
 }
 
 // getHandler - handler for "/{short_tag}" GET Method
-//cjover short url to original url
+// cjover short url to original url
 func (application *App) getHandler(w http.ResponseWriter, r *http.Request) {
 	p := r.RequestURI
 	p = p[1:]
@@ -440,7 +527,7 @@ func (application *App) deleteTags(w http.ResponseWriter, r *http.Request) {
 	application.DelBuf <- task
 }
 
-//middlewares - middleware definition
+// middlewares - middleware definition
 func (application *App) middlewares(r *chi.Mux) {
 	r.Use(middleware.Compress(5))
 	r.Use(middleware.RequestID)
@@ -451,7 +538,7 @@ func (application *App) middlewares(r *chi.Mux) {
 	r.Use(application.cookieProcessor)
 }
 
-//idCookieValue - get cookie value fron request
+// idCookieValue - get cookie value fron request
 func idCookieValue(w http.ResponseWriter, r *http.Request) string {
 	if len(r.Cookies()) == 0 {
 		re := regexp.MustCompile(`\w{96}`)
@@ -476,7 +563,7 @@ func idCookieValue(w http.ResponseWriter, r *http.Request) string {
 	return ""
 }
 
-//cookieProcessor - cookie processor
+// cookieProcessor - cookie processor
 func (application *App) cookieProcessor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if len(r.Cookies()) != 0 {
@@ -506,7 +593,7 @@ func (application *App) cookieProcessor(next http.Handler) http.Handler {
 	})
 }
 
-//addCookie - add cookie to response
+// addCookie - add cookie to response
 func (application *App) addCookie(w http.ResponseWriter, name, value string, key string) {
 	h := hmac.New(sha256.New, []byte(key))
 	h.Write([]byte(value))
@@ -530,7 +617,7 @@ func (application *App) addCookie(w http.ResponseWriter, name, value string, key
 	http.SetCookie(w, &cookie)
 }
 
-//checkCookie - cookie validation
+// checkCookie - cookie validation
 func (application *App) checkCookie(cookie *http.Cookie) bool {
 	data := cookie.Value[:32]
 	signstring := cookie.Value[32:]

@@ -11,14 +11,14 @@ import (
 	"github.com/t1mon-ggg/go_shortner/app/models"
 )
 
-//FileStorage - структура для работы с фаловым хранилищем данных
+// FileStorage - структура для работы с фаловым хранилищем данных
 type fileStorage struct {
-	name string      //имя файла
-	file *os.File    //дескриптор для работы с файлом
-	rw   *sync.Mutex //блокировка для защиты от одновременной записи
+	file *os.File    // дескриптор для работы с файлом
+	rw   *sync.Mutex // блокировка для защиты от одновременной записи
+	name string      // имя файла
 }
 
-//NewFile - функция инициализирующая структуру FileStorage
+// NewFile - функция инициализирующая структуру FileStorage
 func NewFile(name string) *fileStorage {
 	s := fileStorage{}
 	s.name = name
@@ -27,7 +27,7 @@ func NewFile(name string) *fileStorage {
 	return &s
 }
 
-//checkFile - функция проверки существования файла и его создания
+// checkFile - функция проверки существования файла и его создания
 func checkFile(filename string) error {
 	var err error
 	var f *os.File
@@ -42,7 +42,7 @@ func checkFile(filename string) error {
 	return nil
 }
 
-//Ping - функция проверки доступности файла для работы
+// Ping - функция проверки доступности файла для работы
 func (f *fileStorage) Ping() error {
 	log.Println("Check connection to files storage")
 	var err error
@@ -72,7 +72,7 @@ func (f *fileStorage) Ping() error {
 	return nil
 }
 
-//readFile - создание файлового дескриптора для чтения из файла
+// readFile - создание файлового дескриптора для чтения из файла
 func (f *fileStorage) readFile() error {
 	err := checkFile(f.name)
 	if err != nil {
@@ -87,7 +87,7 @@ func (f *fileStorage) readFile() error {
 	return nil
 }
 
-//rewriteFile - создание файлового дескриптора для перезаписи файла новыми данными
+// rewriteFile - создание файлового дескриптора для перезаписи файла новыми данными
 func (f *fileStorage) rewriteFile() error {
 	err := checkFile(f.name)
 	if err != nil {
@@ -102,22 +102,22 @@ func (f *fileStorage) rewriteFile() error {
 	return nil
 }
 
-//getScanner - создание дескритрора для потокового чтения json из файла
+// getScanner - создание дескритрора для потокового чтения json из файла
 func (f *fileStorage) getScanner() *bufio.Scanner {
 	return bufio.NewScanner(f.file)
 }
 
-//getCoder - создание дескритрора для потоковой записи json в файл
+// getCoder - создание дескритрора для потоковой записи json в файл
 func (f *fileStorage) getCoder() *json.Encoder {
 	return json.NewEncoder(f.file)
 }
 
-//Close - закрытие файлового дескриптора после операцияй чтения/записи файла
+// Close - закрытие файлового дескриптора после операцияй чтения/записи файла
 func (f *fileStorage) Close() error {
 	return f.file.Close()
 }
 
-//Write - запись в файл
+// Write - запись в файл
 func (f *fileStorage) Write(m models.ClientData) error {
 	data, err := f.readAllFile()
 	if err != nil {
@@ -139,7 +139,7 @@ func (f *fileStorage) Write(m models.ClientData) error {
 	return nil
 }
 
-//ReadByCookie - чтение из файла
+// ReadByCookie - чтение из файла
 func (f *fileStorage) readAllFile() ([]models.ClientData, error) {
 	f.readFile()
 	scanner := f.getScanner()
@@ -156,7 +156,7 @@ func (f *fileStorage) readAllFile() ([]models.ClientData, error) {
 	return m, nil
 }
 
-//TagByURL - поиск URL
+// TagByURL - поиск URL
 func (f *fileStorage) TagByURL(s, cookie string) (string, error) {
 	data, err := f.readAllFile()
 	if err != nil {
@@ -172,7 +172,7 @@ func (f *fileStorage) TagByURL(s, cookie string) (string, error) {
 	return "", nil
 }
 
-//ReadByCookie - чтение из файла
+// ReadByCookie - чтение из файла
 func (f *fileStorage) ReadByCookie(s string) (models.ClientData, error) {
 	data, err := f.readAllFile()
 	if err != nil {
@@ -188,7 +188,7 @@ func (f *fileStorage) ReadByCookie(s string) (models.ClientData, error) {
 	return models.ClientData{}, nil
 }
 
-//ReadByTag - чтение из файла
+// ReadByTag - чтение из файла
 func (f *fileStorage) ReadByTag(s string) (models.ShortData, error) {
 	data, err := f.readAllFile()
 	if err != nil {
@@ -204,7 +204,20 @@ func (f *fileStorage) ReadByTag(s string) (models.ShortData, error) {
 	return models.ShortData{}, nil
 }
 
-//deleteTag - mark tag as deleted in file storage
+// GetStats - get stats from file
+func (f *fileStorage) GetStats() (models.Stats, error) {
+	data, err := f.readAllFile()
+	if err != nil {
+		return models.Stats{}, err
+	}
+	var urls int
+	for _, shorts := range data {
+		urls += len(shorts.Short)
+	}
+	return models.Stats{Users: len(data), URLs: urls}, nil
+}
+
+// deleteTag - mark tag as deleted in file storage
 func (f *fileStorage) deleteTag(task models.DelWorker) {
 	data, err := f.readAllFile()
 	if err != nil {
@@ -232,17 +245,24 @@ func (f *fileStorage) deleteTag(task models.DelWorker) {
 	f.rw.Unlock()
 }
 
-//Cleaner - delete task worker creator
-func (f *fileStorage) Cleaner(inputCh <-chan models.DelWorker, workers int) {
-	fanOutChs := helpers.FanOut(inputCh, workers)
+// Cleaner - delete task worker creator
+func (f *fileStorage) Cleaner(done <-chan struct{}, wg *sync.WaitGroup, inputCh <-chan models.DelWorker, workers int) {
+	fanOutChs := helpers.FanOut(wg, inputCh, workers)
 	for _, fanOutCh := range fanOutChs {
-		go f.newWorker(fanOutCh)
+		go f.newWorker(done, wg, fanOutCh)
 	}
 }
 
-//newWorker - delete task worker
-func (f *fileStorage) newWorker(input <-chan models.DelWorker) {
-	for task := range input {
-		f.deleteTag(task)
+// newWorker - delete task worker
+func (f *fileStorage) newWorker(done <-chan struct{}, wg *sync.WaitGroup, input <-chan models.DelWorker) {
+	for {
+		select {
+		case task := <-input:
+			log.Println("recieved task:", task)
+			f.deleteTag(task)
+		case <-done:
+			wg.Done()
+			return
+		}
 	}
 }
