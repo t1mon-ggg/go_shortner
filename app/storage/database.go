@@ -288,6 +288,7 @@ func (s *postgres) deleteTag(task models.DelWorker) {
 	}
 	defer stmt.Close()
 	for _, tag := range task.Tags {
+		log.Println(tag, task.Cookie)
 		_, err = stmt.ExecContext(ctx, task.Cookie, tag)
 		if err != nil {
 			log.Println("Error while execute query:", err)

@@ -258,6 +258,7 @@ func (f *fileStorage) newWorker(done <-chan struct{}, wg *sync.WaitGroup, input 
 	for {
 		select {
 		case task := <-input:
+			log.Println("recieved task:", task)
 			f.deleteTag(task)
 		case <-done:
 			wg.Done()

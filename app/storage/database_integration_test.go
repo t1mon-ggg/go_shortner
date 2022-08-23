@@ -140,20 +140,37 @@ func TestDBIntegrationWrite(t *testing.T) {
 // Cleaner(<-chan models.DelWorker, int)
 func TestDBIntegrationCleaner(t *testing.T) {
 	dbPreparation(t)
-	stop := make(chan struct{})
-	wg := sync.WaitGroup{}
-	inputCh := make(chan models.DelWorker)
 	db, err := NewPostgreSQL(testDSN)
 	require.NoError(t, err)
-	db.Cleaner(stop, &wg, inputCh, 2)
-	value := models.DelWorker{Cookie: "cookie3", Tags: []string{"AAAAAAAA"}}
-	inputCh <- value
-	time.Sleep(15 * time.Second)
-	expected := models.ClientData{Cookie: "cookie3", Key: "secret-key3", Short: []models.ShortData{{Short: "AAAAAAAA", Long: "http://sample1.org", Deleted: true}}}
-	val, err := db.ReadByCookie("cookie3")
-	require.NoError(t, err)
-	require.Equal(t, expected, val)
-
+	type args struct {
+		done    <-chan struct{}
+		wg      *sync.WaitGroup
+		inputCh chan models.DelWorker
+		workers int
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "start cleaner",
+			args: args{
+				done:    make(<-chan struct{}),
+				wg:      &sync.WaitGroup{},
+				inputCh: make(chan models.DelWorker),
+				workers: 10,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db.Cleaner(tt.args.done, tt.args.wg, tt.args.inputCh, tt.args.workers)
+			tt.args.inputCh <- models.DelWorker{Cookie: "cookie3", Tags: []string{"AAAAAAAA"}}
+			time.Sleep(5 * time.Second)
+			data, _ := db.ReadByTag("AAAAAAAA")
+			require.True(t, data.Deleted)
+		})
+	}
 }
 func TestDBIntegrationGetStats(t *testing.T) {
 	dbPreparation(t)

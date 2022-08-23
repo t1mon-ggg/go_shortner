@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"log"
 	"sync"
 
 	"github.com/t1mon-ggg/go_shortner/app/helpers"
@@ -128,6 +129,7 @@ func (data *ram) newWorker(done <-chan struct{}, wg *sync.WaitGroup, input <-cha
 	for {
 		select {
 		case task := <-input:
+			log.Println("recieved task:", task)
 			data.deleteTag(task)
 		case <-done:
 			wg.Done()

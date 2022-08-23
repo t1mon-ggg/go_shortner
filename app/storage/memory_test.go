@@ -1,11 +1,11 @@
 package storage
 
 import (
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-
 	"github.com/t1mon-ggg/go_shortner/app/helpers"
 	"github.com/t1mon-ggg/go_shortner/app/models"
 )
@@ -145,4 +145,39 @@ func Test_MEM_GetStats(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, val)
 	t.Log(val)
+}
+
+func Test_ram_Cleaner(t *testing.T) {
+	db := NewRAM()
+	db.testPrepare(t)
+	type args struct {
+		done    <-chan struct{}
+		wg      *sync.WaitGroup
+		inputCh chan models.DelWorker
+		workers int
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "start cleaner",
+			args: args{
+				done:    make(<-chan struct{}),
+				wg:      &sync.WaitGroup{},
+				inputCh: make(chan models.DelWorker),
+				workers: 10,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db.Cleaner(tt.args.done, tt.args.wg, tt.args.inputCh, tt.args.workers)
+			tt.args.inputCh <- models.DelWorker{Cookie: "cookie3", Tags: []string{"abcdABC3"}}
+			time.Sleep(5 * time.Second)
+			data, _ := db.ReadByTag("abcdABC3")
+			t.Log(data)
+			require.True(t, data.Deleted)
+		})
+	}
 }
