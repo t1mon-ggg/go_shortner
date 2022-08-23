@@ -138,7 +138,6 @@ func Test_MEM_Delete(t *testing.T) {
 	require.Equal(t, r, d)
 
 }
-
 func Test_MEM_GetStats(t *testing.T) {
 	db := NewRAM()
 	db.testPrepare(t)

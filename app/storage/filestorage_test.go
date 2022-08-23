@@ -208,11 +208,11 @@ func Test_FileDB_Delete(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// func Test_FileDB_GetStats(t *testing.T) {
-// 	f := NewFile("createme.txt")
-// 	f.testPrepare(t)
-// 	val, err := f.GetStats()
-// 	require.NoError(t, err)
-// 	require.NotEmpty(t, val)
-// 	t.Log(val)
-// }
+func Test_FileDB_GetStats(t *testing.T) {
+	f := NewFile("createme.txt")
+	f.testPrepare(t)
+	val, err := f.GetStats()
+	require.NoError(t, err)
+	require.NotEmpty(t, val)
+	t.Log(val)
+}

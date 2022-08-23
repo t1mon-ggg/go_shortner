@@ -93,7 +93,6 @@ func (s *postgres) create() error {
 	defer cancel()
 	_, err := s.db.ExecContext(ctx, schemaSQL)
 	if err != nil {
-		log.Println("?????!")
 		return err
 	}
 	return nil
@@ -170,7 +169,7 @@ func (s *postgres) TagByURL(url, cookie string) (string, error) {
 	var short string
 	err := s.db.QueryRowContext(ctx, query).Scan(&short)
 	if err != nil {
-		log.Println("!!!!!!!!!!!!!!!!", err)
+		log.Println(err)
 		return "", err
 	}
 	return short, nil
@@ -261,11 +260,11 @@ func (s *postgres) GetStats() (models.Stats, error) {
 	defer cancel()
 	log.Printf("Executing \"%s\"\n", countUsers)
 	var users, urls int
-	err := s.db.QueryRowContext(ctx, countUsers).Scan(users)
+	err := s.db.QueryRowContext(ctx, countUsers).Scan(&users)
 	if err != nil {
 		return models.Stats{}, err
 	}
-	err = s.db.QueryRowContext(ctx, countURLs).Scan(urls)
+	err = s.db.QueryRowContext(ctx, countURLs).Scan(&urls)
 	if err != nil {
 		return models.Stats{}, err
 	}

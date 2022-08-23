@@ -10,8 +10,10 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"os"
 	"regexp"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -749,6 +751,178 @@ func TestApp_NewStorage(t *testing.T) {
 			err := app.NewStorage()
 			require.NoError(t, err)
 			require.NotNil(t, app.Storage)
+		})
+	}
+}
+
+func Test_GetStats1(t *testing.T) {
+	os.Setenv("TRUSTED_SUBNET", "127.0.0.0/8")
+	defer os.Unsetenv("TRUSTED_SUBNET")
+	jar, r, _ := newServer(t)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+	type arg struct {
+		ip   string
+		want int
+	}
+	tests := []struct {
+		name string
+		args arg
+	}{
+		{
+			name: "success",
+			args: arg{
+				ip:   "127.0.0.1",
+				want: http.StatusOK,
+			},
+		},
+		{
+			name: "forbidden",
+			args: arg{
+				ip:   "192.168.0.1",
+				want: http.StatusForbidden,
+			},
+		},
+		{
+			name: "no ip",
+			args: arg{
+				ip:   "",
+				want: http.StatusForbidden,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response, _ := testRequest(t, ts, jar, http.MethodGet, "/api/internal/stats", "", map[string]string{"X-Real-IP": tt.args.ip})
+			defer response.Body.Close()
+			require.Equal(t, tt.args.want, response.StatusCode)
+		})
+	}
+
+}
+
+func Test_GetStats2(t *testing.T) {
+	jar, r, _ := newServer(t)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+	type arg struct {
+		ip   string
+		want int
+	}
+	tests := []struct {
+		name string
+		args arg
+	}{
+		{
+			name: "success",
+			args: arg{
+				ip:   "127.0.0.1",
+				want: http.StatusForbidden,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response, _ := testRequest(t, ts, jar, http.MethodGet, "/api/internal/stats", "", map[string]string{"X-Real-IP": tt.args.ip})
+			defer response.Body.Close()
+			require.Equal(t, tt.args.want, response.StatusCode)
+		})
+	}
+
+}
+
+func TestApp_Wait(t *testing.T) {
+	tests := []struct {
+		name   string
+		Config *config.Config
+	}{
+		{
+			name: "test wg wait return func",
+			Config: &config.Config{
+				BaseURL:         "https://localhost",
+				ServerAddress:   "localhost:443",
+				FileStoragePath: "",
+				Database:        "",
+				Crypto:          true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := NewApp()
+			err := app.NewStorage()
+			require.NoError(t, err)
+			go app.Start()
+			defer func() {
+				app.Signal() <- syscall.SIGTERM
+			}()
+			time.Sleep(5 * time.Second)
+			require.NotNil(t, app.Wait())
+
+		})
+	}
+}
+
+func TestApp_Signal(t *testing.T) {
+	tests := []struct {
+		name   string
+		Config *config.Config
+	}{
+		{
+			name: "test signal return func",
+			Config: &config.Config{
+				BaseURL:         "https://localhost",
+				ServerAddress:   "localhost:443",
+				FileStoragePath: "",
+				Database:        "",
+				Crypto:          true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := NewApp()
+			err := app.NewStorage()
+			require.NoError(t, err)
+			go app.Start()
+			defer func() {
+				app.Signal() <- syscall.SIGTERM
+			}()
+			time.Sleep(5 * time.Second)
+			require.NotNil(t, app.Signal())
+
+		})
+	}
+}
+
+func TestApp_StopSig(t *testing.T) {
+	tests := []struct {
+		name   string
+		Config *config.Config
+	}{
+		{
+			name: "test signal return func",
+			Config: &config.Config{
+				BaseURL:         "https://localhost",
+				ServerAddress:   "localhost:443",
+				FileStoragePath: "",
+				Database:        "",
+				Crypto:          true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := NewApp()
+			err := app.NewStorage()
+			require.NoError(t, err)
+			go app.Start()
+			defer func() {
+				app.Signal() <- syscall.SIGTERM
+			}()
+			time.Sleep(5 * time.Second)
+			require.NotNil(t, app.StopSig())
+
 		})
 	}
 }

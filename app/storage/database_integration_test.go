@@ -159,10 +159,11 @@ func TestDBIntegrationGetStats(t *testing.T) {
 	dbPreparation(t)
 	db, err := NewPostgreSQL(testDSN)
 	require.NoError(t, err)
-	expected := models.Stats{URLs: 0, Users: 0}
+	expected := models.Stats{URLs: 6, Users: 4}
 	data, err := db.GetStats()
 	require.NoError(t, err)
 	require.Equal(t, expected, data)
+	t.Log(data)
 }
 
 /*

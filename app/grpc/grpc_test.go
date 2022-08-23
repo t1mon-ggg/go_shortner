@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	pb "github.com/t1mon-ggg/go_shortner/app/grpc/proto"
+	"github.com/t1mon-ggg/go_shortner/app/models"
 	"github.com/t1mon-ggg/go_shortner/app/webhandlers"
 )
 
@@ -26,6 +27,8 @@ func stop(g *grpcServer) {
 }
 
 func Test_grpcServer_SimpleShort(t *testing.T) {
+	os.Setenv("GRPC_ADDRESS", "127.0.0.1:3206")
+	defer os.Unsetenv("GRPC_ADDRESS")
 	db := webhandlers.NewApp()
 	err := db.NewStorage()
 	require.NoError(t, err)
@@ -35,7 +38,7 @@ func Test_grpcServer_SimpleShort(t *testing.T) {
 		g.Start()
 	}()
 	defer stop(g)
-	conn, err := grpc.Dial(":3200", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(":3206", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,46 +50,58 @@ func Test_grpcServer_SimpleShort(t *testing.T) {
 	ctx := metadata.NewOutgoingContext(context.Background(), nil)
 	response, err := app.SimpleShort(ctx, request, grpc.Trailer(&header))
 	require.NoError(t, err)
+	require.NotEmpty(t, header["client_id"][0])
 	require.NotEmpty(t, response.Short)
 }
 
 func Test_grpcServer_APIStats(t *testing.T) {
-	db := webhandlers.NewApp()
-	err := db.NewStorage()
+	db1 := webhandlers.NewApp()
+	err := db1.NewStorage()
 	require.NoError(t, err)
-	g := New(db)
+	g1 := New(db1)
 	go func() {
-		go db.Start()
-		g.Start()
+		go db1.Start()
+		g1.Start()
 	}()
-	defer stop(g)
-	conn, err := grpc.Dial(":3200", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-	app := pb.NewShortenerClient(conn)
+	conn1, err := grpc.Dial(":3200", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	app := pb.NewShortenerClient(conn1)
 	request := new(pb.APIStatsRequest)
 	ctx := metadata.NewOutgoingContext(context.Background(), nil)
 	_, err = app.APIStats(ctx, request)
 	require.Error(t, err)
-	stop(g)
+	stop(g1)
+	conn1.Close()
 	os.Setenv("TRUSTED_SUBNET", "127.0.0.0/8")
-	db = webhandlers.NewApp()
-	err = db.NewStorage()
+	os.Setenv("GRPC_ADDRESS", "127.0.0.1:3201")
+	defer os.Unsetenv("GRPC_ADDRESS")
+	db2 := webhandlers.NewApp()
+	err = db2.NewStorage()
 	require.NoError(t, err)
-	g = New(db)
+	g2 := New(db2)
 	go func() {
-		go db.Start()
-		g.Start()
+		go db2.Start()
+		g2.Start()
 	}()
+	defer stop(g2)
+	conn2, err := grpc.Dial(":3201", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer conn2.Close()
+	app = pb.NewShortenerClient(conn2)
 	response, err := app.APIStats(ctx, request)
 	require.NoError(t, err)
 	require.NotEmpty(t, response.Stats)
-	t.Log(response.Stats)
+	exp := models.Stats{URLs: 0, Users: 1}
+	val := models.Stats{}
+	err = json.Unmarshal([]byte(response.Stats), &val)
+	require.NoError(t, err)
+	require.Equal(t, exp, val)
+
 }
 
 func Test_grpcServer_Ping(t *testing.T) {
+	os.Setenv("GRPC_ADDRESS", "127.0.0.1:3202")
+	defer os.Unsetenv("GRPC_ADDRESS")
 	db := webhandlers.NewApp()
 	err := db.NewStorage()
 	require.NoError(t, err)
@@ -96,7 +111,7 @@ func Test_grpcServer_Ping(t *testing.T) {
 		g.Start()
 	}()
 	defer stop(g)
-	conn, err := grpc.Dial(":3200", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(":3202", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -109,6 +124,8 @@ func Test_grpcServer_Ping(t *testing.T) {
 }
 
 func Test_grpcServer_APIUserShortDelete(t *testing.T) {
+	os.Setenv("GRPC_ADDRESS", "127.0.0.1:3203")
+	defer os.Unsetenv("GRPC_ADDRESS")
 	db := webhandlers.NewApp()
 	err := db.NewStorage()
 	require.NoError(t, err)
@@ -118,7 +135,7 @@ func Test_grpcServer_APIUserShortDelete(t *testing.T) {
 		g.Start()
 	}()
 	defer stop(g)
-	conn, err := grpc.Dial(":3200", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(":3203", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -130,8 +147,7 @@ func Test_grpcServer_APIUserShortDelete(t *testing.T) {
 	ctx := metadata.NewOutgoingContext(context.Background(), nil)
 	short, err := app.SimpleShort(ctx, request, grpc.Header(&header))
 	require.NoError(t, err)
-	t.Log(header["client_id"])
-	t.Log(short.Short)
+	require.NotEmpty(t, header["client_id"][0])
 	requestDel := new(pb.APIUserShortDeleteRequest)
 	re := regexp.MustCompile(`\w{8}`)
 	s := string(re.Find([]byte(short.Short)))
@@ -148,15 +164,12 @@ func Test_grpcServer_APIUserShortDelete(t *testing.T) {
 }
 
 func Test_grpcServer_APIUserURLs(t *testing.T) {
+	os.Setenv("GRPC_ADDRESS", "127.0.0.1:3204")
+	defer os.Unsetenv("GRPC_ADDRESS")
 	type input struct {
 		Correlation string `json:"correlation_id"`
 		Long        string `json:"original_url"`
 	}
-	type output struct {
-		Correlation string `json:"correlation_id"`
-		Short       string `json:"short_url"`
-	}
-
 	in := []input{
 		{Correlation: "12345",
 			Long: "http://example1.org"},
@@ -212,7 +225,7 @@ func Test_grpcServer_APIUserURLs(t *testing.T) {
 		g.Start()
 	}()
 	defer stop(g)
-	conn, err := grpc.Dial(":3200", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(":3204", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -224,6 +237,7 @@ func Test_grpcServer_APIUserURLs(t *testing.T) {
 	header := metadata.MD{}
 	response, err := app.APIBatchShort(ctx, request, grpc.Header(&header))
 	require.NoError(t, err)
+	require.NotEmpty(t, header["client_id"][0])
 	require.NotEmpty(t, response.Jsonshorts)
 	ctx = metadata.NewOutgoingContext(context.Background(), metadata.Pairs("Client_ID", header["client_id"][0]))
 	urls := new(pb.APIUserURLRequest)
@@ -235,6 +249,8 @@ func Test_grpcServer_APIUserURLs(t *testing.T) {
 }
 
 func Test_grpcServer_APIShort(t *testing.T) {
+	os.Setenv("GRPC_ADDRESS", "127.0.0.1:3205")
+	defer os.Unsetenv("GRPC_ADDRESS")
 	type req struct {
 		URL string `json:"url"` // {"url":"<some_url>"}
 	}
@@ -251,7 +267,7 @@ func Test_grpcServer_APIShort(t *testing.T) {
 		g.Start()
 	}()
 	defer stop(g)
-	conn, err := grpc.Dial(":3200", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(":3205", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -266,13 +282,11 @@ func Test_grpcServer_APIShort(t *testing.T) {
 }
 
 func Test_grpcServer_APIBatchShort(t *testing.T) {
+	os.Setenv("GRPC_ADDRESS", "127.0.0.1:3207")
+	defer os.Unsetenv("GRPC_ADDRESS")
 	type input struct {
 		Correlation string `json:"correlation_id"`
 		Long        string `json:"original_url"`
-	}
-	type output struct {
-		Correlation string `json:"correlation_id"`
-		Short       string `json:"short_url"`
 	}
 
 	in := []input{
@@ -330,7 +344,7 @@ func Test_grpcServer_APIBatchShort(t *testing.T) {
 		g.Start()
 	}()
 	defer stop(g)
-	conn, err := grpc.Dial(":3200", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(":3207", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal(err)
 	}

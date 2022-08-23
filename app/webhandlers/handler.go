@@ -218,7 +218,7 @@ func (application *App) userURLs(w http.ResponseWriter, r *http.Request) {
 // @Summary Запрос статистики
 // @Accept text/plain
 // @Produce application/json
-// @Param Client_ID header string true "Идентификационный cookie Client_ID"
+// @Param X-Real-IP header string true "IP адрес клиента в заголовке"
 // @Success 200 {array} answer "Статистика"
 // @Failure 500 {string} string "Внутренняя ошибка сервера"
 // @Router api/internal/stats [get]
